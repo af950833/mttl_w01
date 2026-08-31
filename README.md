@@ -1,102 +1,364 @@
-# MTTL-W01 local server
+# MTTL-W01 로컬 서버
 
-Local-only server for LG U+ MTTL-W01 smart strips. It provides certificate
-download, MEF enrollment, automatic upgrades to the bundled stable 1.0.66
-firmware, a TLS MQTT endpoint, and a multi-device
-web dashboard. It does not use Docker Compose or a database.
+LG U+ `MTTL-W01` 스마트 멀티탭을 제조사 클라우드 없이 내부망에서 사용하기 위한 Docker 기반 로컬 서버입니다.
 
-## Data and certificates
+주요 기능:
 
-Create two host directories. The data directory must be writable by UID 10001.
-Each installation must use its own CA and server certificates. Generate them
-once with the image before starting the server:
+- 멀티탭 인증서 발급 및 로컬 서버 등록(MEF enrollment)
+- 멀티탭 전용 TLS MQTT 서버
+- 여러 대의 멀티탭을 관리하는 웹 대시보드
+- 전체 및 1~4번 채널 제어와 소비전력 표시
+- ASUS 공유기의 목적지 IP 기반 DNAT 자동 설정
+- Home Assistant MQTT Discovery 연동
+- Android 프로비저닝 앱과 다운로드 QR
+- 구형 기기의 정식 `1.0.66` 펌웨어 자동 업데이트
+- DB 없이 JSON/JSONL 파일로 상태 저장
 
-```sh
-mkdir -p /home/USER/docker/mttl/data /home/USER/docker/mttl/certs
-sudo chown -R 10001:10001 /home/USER/docker/mttl/data /home/USER/docker/mttl/certs
+Docker Compose는 사용하지 않습니다.
+
+> 이 프로젝트는 LG U+의 공식 프로젝트가 아닙니다. 신뢰할 수 있는 개인 내부망에서 사용하는 것을 전제로 합니다.
+
+## 동작 구조
+
+멀티탭은 원래 제조사 서버 IP로 접속하지만, ASUS 공유기의 DNAT가 아래 세 연결만 Docker 서버로 전달합니다.
+
+| 원래 목적지 | 로컬 서버 목적지 | 용도 |
+| --- | --- | --- |
+| `106.103.210.126:80` | `LOCAL_SERVER_IP:18080` | 자체 CA 다운로드 |
+| `106.103.210.126:443` | `LOCAL_SERVER_IP:18443` | MEF 등록 및 OTA 확인 |
+| `106.103.210.119:18831` | `LOCAL_SERVER_IP:18832` | 멀티탭 TLS MQTT |
+
+멀티탭의 출발지 IP를 고정하거나 기기별 DNAT 규칙을 만들 필요는 없습니다. 다만 위 목적지 IP를 사용하는 다른 LG U+ IoT 기기가 같은 네트워크에 있다면 그 기기의 통신도 영향을 받을 수 있습니다.
+
+## 준비물
+
+- LG U+ MTTL-W01 멀티탭
+- 24시간 동작 가능한 Linux 서버(Ubuntu 22.04/24.04 권장)
+- Docker Engine
+- 내부망 고정 IP 또는 DHCP 고정 할당을 적용한 서버
+- SSH가 활성화된 ASUS 공유기
+  - SSH 계정이 `/usr/sbin/iptables`와 `/usr/sbin/conntrack`을 실행할 수 있어야 합니다.
+- Android 10 이상 휴대전화
+- 멀티탭이 연결할 2.4 GHz Wi-Fi SSID와 암호
+- Home Assistant 연동 시 별도의 MQTT Broker
+
+## 1. Docker 확인
+
+Docker가 이미 설치되어 있다면 설치 단계는 건너뜁니다.
+
+```bash
+docker version
+```
+
+현재 사용자가 Docker를 실행할 권한이 없다면 명령 앞에 `sudo`를 붙이거나 Docker 그룹 설정을 완료하십시오.
+
+## 2. 저장소 내려받기
+
+```bash
+git clone https://github.com/af950833/mttl_w01.git
+cd mttl_w01
+```
+
+## 3. Docker 이미지 빌드
+
+```bash
 docker build -t mttl-local:latest .
+```
+
+이미지에는 서버, 웹 대시보드, Android APK 및 MTTL-W01 정식 `1.0.66` 펌웨어가 포함됩니다.
+
+## 4. 데이터 및 인증서 디렉터리 생성
+
+아래 예시는 `/srv/mttl`을 영구 저장 경로로 사용합니다. 다른 경로를 사용한다면 이후 명령도 같은 경로로 변경하십시오.
+
+```bash
+sudo mkdir -p /srv/mttl/data /srv/mttl/certs
+sudo chown -R 10001:10001 /srv/mttl/data /srv/mttl/certs
+```
+
+컨테이너 내부 서버는 UID `10001`로 동작하므로 두 디렉터리에 쓰기 권한이 필요합니다.
+
+## 5. 서버 전용 인증서 생성
+
+설치할 서버마다 고유한 CA와 서버 인증서를 한 번 생성해야 합니다.
+
+```bash
 docker run --rm \
-  -v /home/USER/docker/mttl/certs:/certs \
+  -v /srv/mttl/certs:/certs \
   mttl-local:latest generate-certs
 ```
 
-The command creates:
+생성되는 파일:
 
-- `root-ca.crt`
-- `root-ca.key`
+- `root-ca.crt`, `root-ca.key`
 - `mef.crt`, `mef.key`
 - `brk2.crt`, `brk2.key`
 
-Running the command again does not overwrite a complete certificate set. If
-the directory contains only some of these files, generation stops without
-replacing the existing CA. Keep `root-ca.key` private and do not commit any
-generated certificate or key to Git.
+확인 명령:
 
-Device state and energy snapshots are stored as JSON/JSONL below `/data`.
-Credentials are omitted from dashboard API responses.
+```bash
+sudo ls -l /srv/mttl/certs
+```
 
-## Build and run
+완전한 인증서 세트가 이미 있으면 생성 명령은 기존 인증서를 덮어쓰지 않습니다. 일부 파일만 남은 불완전한 상태에서도 자동 교체하지 않으므로, 복구할 인증서가 없다면 인증서 디렉터리를 비운 뒤 다시 생성해야 합니다.
 
-```sh
-docker build -t mttl-local:latest .
+`root-ca.key`는 서버의 개인키입니다. 공개 저장소나 공유 폴더에 복사하지 마십시오. 이미 등록한 멀티탭을 계속 사용하려면 `/srv/mttl/certs`를 반드시 백업해야 합니다.
+
+## 6. 컨테이너 실행
+
+```bash
 docker run -d \
   --name mttl-local \
   --restart unless-stopped \
   --network host \
-  -v /home/USER/docker/mttl/data:/data \
-  -v /home/USER/docker/mttl/certs:/certs:ro \
+  -v /srv/mttl/data:/data \
+  -v /srv/mttl/certs:/certs:ro \
   mttl-local:latest
 ```
 
-Dashboard: `http://SERVER_IP:18833/`
+실행 상태 확인:
 
-The dashboard also serves the Android provisioning APK at
-`/downloads/MTTL-W01-Provisioner.apk`. The app connects to the strip's
-`ONLY_TAP_XXXXXXX` or `TONLY_TAP_XXXXXXX` setup network, derives its
-`LGU_XXXXXXX` password, and sends the selected 2.4 GHz Wi-Fi credentials to
-the strip over its local port 30300. Enable the router DNAT rules before local
-provisioning.
+```bash
+docker ps --filter name=mttl-local
+docker logs --tail 100 mttl-local
+curl http://127.0.0.1:18833/api/health
+```
 
-The host-network ports are:
+정상 응답:
 
-| Port | Purpose |
+```json
+{"status": "ok"}
+```
+
+서버에서 다음 TCP 포트를 허용해야 합니다.
+
+| 포트 | 용도 |
 | ---: | --- |
-| 18080/tcp | device CA download |
-| 18443/tcp | TLS MEF enrollment and OTA blocking |
-| 18832/tcp | TLS MQTT |
-| 18833/tcp | dashboard and REST API |
+| `18080` | 멀티탭 CA 다운로드 |
+| `18443` | TLS MEF 등록 및 OTA |
+| `18832` | 멀티탭 TLS MQTT |
+| `18833` | 웹 대시보드와 REST API |
 
-## Firmware updates
+UFW 사용 예시:
 
-The image bundles the original MTTL-W01 `1.0.66` firmware. When an MTTL-W01
-reports a lower dotted-numeric version to the local MEF endpoint, the server
-automatically offers `1.0.66` and serves the firmware from the original OTA
-path. Devices already running `1.0.66` or a newer version receive no update.
+```bash
+sudo ufw allow from 192.168.0.0/24 to any port 18080 proto tcp
+sudo ufw allow from 192.168.0.0/24 to any port 18443 proto tcp
+sudo ufw allow from 192.168.0.0/24 to any port 18832 proto tcp
+sudo ufw allow from 192.168.0.0/24 to any port 18833 proto tcp
+```
 
-The server verifies the bundled file before every offer and download:
+실제 네트워크가 다르면 `192.168.0.0/24`를 내부망 대역으로 변경하십시오.
+
+## 7. 웹 대시보드 접속
+
+브라우저에서 다음 주소를 엽니다.
 
 ```text
-File:   comMTTL-W01_1.0.66.fwr
-Size:   327944 bytes
+http://LOCAL_SERVER_IP:18833/
+```
+
+서버 IP가 `192.168.0.4`인 경우:
+
+```text
+http://192.168.0.4:18833/
+```
+
+## 8. ASUS Router DNAT 설정
+
+ASUS 공유기 관리 페이지에서 SSH를 활성화한 다음 대시보드의 **ASUS Router DNAT** 카드에 입력합니다.
+
+- **Router IP**: 공유기의 내부 IP
+- **SSH Username**: 공유기 SSH 사용자 이름
+- **SSH Password**: 공유기 SSH 암호
+- **Local Server IP**: Docker 서버의 내부 IP
+
+설정 순서:
+
+1. **Save Settings**를 눌러 저장합니다.
+2. **Test Connection**으로 SSH, `iptables`, `conntrack` 사용 가능 여부를 확인합니다.
+3. **Enable DNAT**을 눌러 세 개의 전달 규칙을 적용합니다.
+4. 카드 우측 상태가 **Enabled**이고 세 규칙이 모두 `Enabled`인지 확인합니다.
+
+서버는 공유기에 `MTTL_DNAT`이라는 별도 NAT 체인을 만들고 기존 연결의 conntrack 항목을 정리합니다. 공유기 암호는 `/data/router-dnat.json`에 권한 `0600`으로 저장되며 대시보드 API로 반환되지 않습니다.
+
+제조사 서버에 임시로 연결하거나 DNAT가 필요 없을 때는 **Disable DNAT**을 누릅니다.
+
+## 9. Android 프로비저닝 앱 설치
+
+대시보드 최상단의 QR 코드를 Android 휴대전화로 스캔하거나 아래 주소에서 APK를 받습니다.
+
+```text
+http://LOCAL_SERVER_IP:18833/downloads/MTTL-W01-Provisioner.apk
+```
+
+GitHub에서도 직접 받을 수 있습니다.
+
+- [MTTL-W01 Provisioner APK](web/downloads/MTTL-W01-Provisioner.apk)
+
+Android가 경고하면 해당 브라우저 또는 파일 관리자의 **알 수 없는 앱 설치** 권한을 허용합니다. Wi-Fi 검색을 위한 위치 또는 주변 기기 권한도 허용해야 합니다.
+
+## 10. 멀티탭 프로비저닝
+
+프로비저닝 전에 DNAT를 활성화하고 Docker 서버가 정상 동작 중인지 확인합니다.
+
+1. 앱에서 **SCAN WI-FI Network**를 누릅니다.
+2. **Home Wi-Fi SSID**에서 멀티탭이 사용할 2.4 GHz Wi-Fi를 선택합니다.
+3. **Home Wi-Fi password**에 암호를 입력합니다.
+4. 멀티탭의 메인 버튼을 약 10초 이상 눌러 상태 LED가 빠르게 깜박이게 합니다.
+5. `ONLY_TAP_XXXXXXX` 또는 `TONLY_TAP_XXXXXXX` 형식의 설정 AP가 나타날 때까지 기다립니다.
+6. 앱에서 해당 멀티탭 AP를 선택하고 **Provision**을 누릅니다.
+7. Android의 Wi-Fi 연결 승인 창이 나타나면 허용합니다.
+8. 앱 로그에 **Provision Success**와 **You can close this APP**이 표시될 때까지 기다립니다.
+9. 멀티탭이 재부팅하고 홈 Wi-Fi에 연결될 때까지 기다립니다. 필요한 경우 전원을 한 번 껐다가 켭니다.
+10. 대시보드에 새 카드가 나타나고 상태 표시가 녹색으로 바뀌는지 확인합니다.
+
+앱은 설정 AP 이름의 마지막 7자리로 `LGU_XXXXXXX` 형식의 AP 암호를 자동 계산합니다. 홈 Wi-Fi 정보는 멀티탭의 로컬 포트 `30300`으로 직접 전송합니다.
+
+대시보드에서 카드만 삭제해도 이미 프로비저닝된 멀티탭이 서버에 재접속하면 카드가 다시 생성될 수 있습니다. 완전히 다시 등록하려면 멀티탭을 초기화한 뒤 프로비저닝하십시오.
+
+## 11. 대시보드 기능
+
+- 기기 이름 및 채널 이름 변경
+- 전체 전원 및 1~4번 채널 개별 제어
+- 전체/채널별 현재 소비전력 확인
+- Today 사용량 확인
+- 펌웨어 버전과 온라인 상태 확인
+- **HA Link** 활성화/비활성화
+- 기기 카드 삭제
+
+연결이 끊기면 기본적으로 약 45초 뒤 오프라인으로 판단하며, 대시보드는 약 5초 간격으로 화면을 갱신합니다.
+
+## 12. Home Assistant MQTT 연동
+
+Home Assistant에 MQTT 통합과 MQTT Broker가 먼저 준비되어 있어야 합니다. 대시보드의 **Home Assistant MQTT** 카드에 입력합니다.
+
+- **MQTT Broker IP**: MQTT Broker의 내부 IP
+- **Port**: 기본값 `1883`
+- **Username / Password**: MQTT Broker 계정
+- **Discovery Prefix**: 기본값 `homeassistant`
+- **Topic Prefix**: 기본값 `mttl`
+
+**Save & Connect**를 누르고 `Status: Connected`를 확인합니다. 이후 각 멀티탭 카드의 **HA Link**를 활성화하면 MQTT Discovery 엔티티가 생성됩니다.
+
+MAC 마지막 7자리가 `97C0123`인 기기의 기본 Entity ID:
+
+```text
+switch.mttl_97c0123_all
+switch.mttl_97c0123_sw1
+switch.mttl_97c0123_sw2
+switch.mttl_97c0123_sw3
+switch.mttl_97c0123_sw4
+
+sensor.mttl_97c0123_powerall
+sensor.mttl_97c0123_power1
+sensor.mttl_97c0123_power2
+sensor.mttl_97c0123_power3
+sensor.mttl_97c0123_power4
+sensor.mttl_97c0123_today_usage
+```
+
+전체 스위치 표시 이름은 `SW All`, 일일 사용량 센서는 `Today Usage`입니다. 온라인 여부는 별도 센서가 아니라 각 엔티티의 MQTT availability로 전달됩니다.
+
+HA Link를 비활성화하면 MQTT Discovery 삭제 메시지가 발행됩니다. Home Assistant가 중지된 상태에서는 삭제를 즉시 처리하지 못할 수 있으므로 HA와 Broker가 실행 중일 때 비활성화하는 것이 좋습니다.
+
+## 13. 펌웨어 자동 업데이트
+
+이미지에는 수정하지 않은 MTTL-W01 정식 `1.0.66` 펌웨어가 포함됩니다. 기기가 로컬 MEF 서버에 보고한 버전이 `1.0.66`보다 낮으면 서버가 자동으로 업데이트를 제안하며, `1.0.66` 이상에는 제안하지 않습니다.
+
+```text
+파일:   comMTTL-W01_1.0.66.fwr
+크기:   327944 bytes
 SHA256: d780b578af69d52f3a05191a8e7d91a20e05085a912722327481cd5663682c04
 ```
 
-Keep the strip powered while an update is in progress. The strip may reboot
-more than once before reconnecting to the local MQTT server.
+업데이트 중에는 전원을 차단하지 마십시오. 다운로드 후 여러 번 재부팅하거나 다시 온라인으로 나타나기까지 시간이 걸릴 수 있습니다.
 
-## Router DNAT targets
+```bash
+docker logs -f mttl-local
+```
 
-The router must match the original destination, not the strip's source IP:
+## 14. 데이터와 백업
 
-| Original destination | Local target |
-| --- | --- |
-| `106.103.210.126:80` | `SERVER_IP:18080` |
-| `106.103.210.126:443` | `SERVER_IP:18443` |
-| `106.103.210.119:18831` | `SERVER_IP:18832` |
+별도 DB 없이 영구 데이터는 `/srv/mttl/data`에 저장됩니다.
 
-Router SSH settings and DNAT apply/remove controls are available in the web
-dashboard. The manager creates only an `MTTL_DNAT` chain, verifies all three
-rules after changes, and clears matching destination conntrack entries. The
-router password is stored with mode 0600 in `/data/router-dnat.json` and is
-never returned by the API. Do not expose the dashboard to the public Internet;
-it currently assumes a trusted LAN.
+- 기기 등록 정보와 이름
+- 채널 상태와 전력 정보
+- Today 사용량 스냅샷
+- DNAT 및 Home Assistant MQTT 설정
+- 서버 로그
+
+백업 대상:
+
+```text
+/srv/mttl/data
+/srv/mttl/certs
+```
+
+인증서 디렉터리를 잃어버리면 기존 CA를 신뢰하도록 등록된 멀티탭을 초기화하고 다시 프로비저닝해야 할 수 있습니다.
+
+## 15. 서버 업데이트
+
+데이터를 백업한 다음 저장소와 이미지를 업데이트합니다.
+
+```bash
+cd mttl_w01
+git pull
+docker build -t mttl-local:latest .
+docker stop mttl-local
+docker rm mttl-local
+docker run -d \
+  --name mttl-local \
+  --restart unless-stopped \
+  --network host \
+  -v /srv/mttl/data:/data \
+  -v /srv/mttl/certs:/certs:ro \
+  mttl-local:latest
+```
+
+볼륨의 데이터와 인증서는 컨테이너를 삭제해도 유지됩니다.
+
+## 16. 문제 해결
+
+### 대시보드가 열리지 않을 때
+
+```bash
+docker ps --filter name=mttl-local
+docker logs --tail 200 mttl-local
+sudo ss -lntp | grep -E '18080|18443|18832|18833'
+curl http://127.0.0.1:18833/api/health
+```
+
+### 컨테이너가 인증서 오류로 종료될 때
+
+로그에 `missing certificate files`가 표시되면 `/srv/mttl/certs`의 파일과 마운트 경로를 확인하고 5단계의 인증서 생성 명령을 실행합니다.
+
+### DNAT 테스트가 실패할 때
+
+- 공유기의 SSH 기능과 계정 정보를 확인합니다.
+- `/usr/sbin/iptables --version` 실행 여부를 확인합니다.
+- 공유기에 `/usr/sbin/conntrack`이 존재하는지 확인합니다.
+- Docker 서버 IP가 변경되지 않았는지 확인합니다.
+- 공유기와 서버가 서로 접근 가능한 내부망인지 확인합니다.
+
+### 프로비저닝 후 기기가 오프라인일 때
+
+- DNAT 세 항목이 모두 Enabled인지 확인합니다.
+- 멀티탭이 2.4 GHz Wi-Fi를 사용하는지 확인합니다.
+- 서버 방화벽이 `18080`, `18443`, `18832`를 허용하는지 확인합니다.
+- `docker logs -f mttl-local` 상태에서 멀티탭 전원을 다시 연결합니다.
+- SSID 또는 암호에 `:`가 있으면 현재 펌웨어의 로컬 명령 형식상 사용할 수 없습니다.
+
+### Home Assistant 엔티티가 생성되지 않을 때
+
+- Home Assistant MQTT 카드가 `Connected`인지 확인합니다.
+- 멀티탭 카드의 HA Link를 활성화합니다.
+- Discovery Prefix가 Home Assistant 설정과 같은지 확인합니다.
+- MQTT 계정에 Discovery 및 `mttl/#` 토픽 publish/subscribe 권한이 있는지 확인합니다.
+
+## 보안 참고
+
+- 웹 대시보드는 인증 기능이 없으므로 인터넷에 직접 노출하지 마십시오.
+- 공유기 및 MQTT 암호가 저장되는 데이터 디렉터리 권한을 제한하십시오.
+- 생성한 CA 개인키를 저장소에 커밋하지 마십시오.
+- DNAT를 켜면 지정된 제조사 목적지의 통신이 로컬 서버로 전달됩니다.
