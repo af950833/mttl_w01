@@ -1,0 +1,10 @@
+captures
+work
+!work/ap/
+!work/ap/mttl_cert_server.py
+!work/ap/mttl_mef_proxy.py
+.git
+__pycache__
+*.pyc
+*.fwr
+*.apk

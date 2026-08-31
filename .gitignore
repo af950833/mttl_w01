@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Runtime data and certificates
+data/
+certs/
+*.key
+
+# Android local/build files
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.jks
+*.keystore
+
+# Captures, analysis, and local tooling
+captures/
+work/analysis/
+work/reference/
+.tools/
+
+# Local build archives
+*.tar
+*.tar.gz
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

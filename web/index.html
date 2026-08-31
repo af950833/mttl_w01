@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MTTL-W01</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .card-tools{justify-content:space-between;align-items:center}
+    header .header-tools{flex-direction:column;align-items:flex-end;gap:3px}.server-version{color:#cbd5e1;font-size:12px}
+    .top-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:24px 5vw 0}
+    .top-grid .router,.top-grid .ha-mqtt{margin:0}
+    .ha-mqtt{background:white;border-radius:18px;padding:20px;box-shadow:0 8px 30px #14213d18}
+    .ha-mqtt .settings{grid-template-columns:minmax(130px,1.5fr) 76px minmax(110px,1fr) minmax(150px,1.4fr)}.ha-mqtt .settings label{min-width:0}.ha-mqtt .settings input{box-sizing:border-box;width:100%;min-width:0}.ha-mqtt .settings .prefix-field{grid-column:span 2}.ha-status-details{display:grid;gap:4px;margin-top:12px;color:#64748b;font-size:13px}
+    .password-field{display:grid;grid-template-columns:minmax(0,1fr) 40px;gap:6px}.password-toggle{height:36px;padding:0;font-size:18px}.card-tools .ha-link,.card-tools .danger{height:36px}.card-tools .ha-link{padding:0 4px}
+    .device-heading{display:grid;gap:2px;min-width:0}.device-heading .name-row{min-width:0}
+    .ha-link{display:flex;align-items:center;gap:8px;color:#64748b;font-size:13px}
+    .toggle{position:relative;width:42px;height:24px;display:inline-block}.toggle input{opacity:0;width:0;height:0}.slider{position:absolute;inset:0;background:#cbd5e1;border-radius:24px;cursor:pointer;transition:.2s}.slider:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:white;border-radius:50%;transition:.2s}.toggle input:checked+.slider{background:#22c55e}.toggle input:checked+.slider:before{transform:translateX(18px)}
+    @media(max-width:1100px){.ha-mqtt .settings{grid-template-columns:minmax(0,1fr) 90px}.ha-mqtt .settings .prefix-field{grid-column:span 1}.ha-mqtt .settings .credential-field{grid-column:span 2}}@media(max-width:900px){.top-grid{grid-template-columns:1fr}}
+    @media(min-width:1601px){main{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  </style>
+</head>
+<body>
+  <header><h1>MTTL-W01</h1><div class="header-tools"><span id="health">Connecting</span><small class="server-version">Ver : 20260831</small></div></header>
+  <section class="app-download">
+    <div><h2>Android Provisioning App</h2><p>Scan on a phone connected to this LAN, or use the direct download link.</p><a class="app-download-button" href="/downloads/MTTL-W01-Provisioner.apk" download>Download MTTL-W01 Provisioner</a></div>
+    <a href="/downloads/MTTL-W01-Provisioner.apk" aria-label="Download Android provisioning app"><img src="/downloads/MTTL-W01-Provisioner-QR.png" alt="QR code for MTTL-W01 Provisioner APK download"></a>
+  </section>
+  <div class="top-grid">
+  <section class="router">
+    <div class="title"><h2>ASUS Router DNAT</h2><span id="dnatState" class="badge">Checking</span></div>
+    <div class="settings">
+      <label>Router IP<input id="routerHost" placeholder="192.168.0.1"></label>
+      <label>SSH Username<input id="routerUser"></label>
+      <label>SSH Password<input id="routerPassword" type="password" placeholder="Enter only to change"></label>
+      <label>Local Server IP<input id="serverIp" placeholder="192.168.0.4"></label>
+    </div>
+    <div class="bulk"><button onclick="saveDnat()">Save Settings</button><button onclick="dnatAction('test')">Test Connection</button><button onclick="dnatAction('enable')">Enable DNAT</button><button onclick="dnatAction('disable')">Disable DNAT</button></div>
+    <div id="dnatDetails" class="dnat-details"><span>Certificate: Checking</span><span>MEF: Checking</span><span>MQTT: Checking</span></div>
+    <small>Redirects only 106.103.210.126:80/443 and 106.103.210.119:18831 to the local server.</small>
+  </section>
+  <section class="ha-mqtt">
+    <div class="title"><h2>Home Assistant MQTT</h2><span id="haState" class="badge">Not Configured</span></div>
+    <div class="settings">
+      <label>MQTT Broker IP<input id="haHost" placeholder="192.168.0.4" oninput="this.dataset.edited='true'"></label>
+      <label>Port<input id="haPort" type="number" value="1883" oninput="this.dataset.edited='true'"></label>
+      <label class="credential-field">Username<input id="haUser" name="ha_mqtt_broker_username" autocomplete="off" data-lpignore="true" data-1p-ignore oninput="this.dataset.edited='true'"></label>
+      <label class="credential-field">Password<div class="password-field"><input id="haPassword" name="ha_mqtt_broker_password" type="password" autocomplete="new-password" data-lpignore="true" data-1p-ignore placeholder="Enter only to change" oninput="this.dataset.edited='true'"><button type="button" id="haPasswordToggle" class="password-toggle" title="Show password" aria-label="Show password" onclick="toggleHAPassword()">👁</button></div></label>
+      <label class="prefix-field">Discovery Prefix<input id="haDiscovery" value="homeassistant" oninput="this.dataset.edited='true'"></label>
+      <label class="prefix-field">Topic Prefix<input id="haTopic" value="mttl" oninput="this.dataset.edited='true'"></label>
+    </div>
+    <div class="bulk"><button onclick="saveHA()">Save &amp; Connect</button><button onclick="refreshHA()">Refresh Status</button></div>
+    <div class="ha-status-details"><div>Status: <span id="haConnectionStatus">Disconnected</span></div><div>Last Connected: <span id="haLastConnected">Never</span></div></div>
+    <small>Enable HA Link on each device card to create its MQTT Discovery entities.</small>
+  </section>
+  </div>
+  <main id="devices"><p class="empty">Waiting for an MTTL-W01 device.</p></main>
+  <script>
+    const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    let deviceCache = new Map();
+    async function refresh() {
+      try {
+        const devices = await fetch('/api/devices').then(r => r.json());
+        deviceCache = new Map(devices.map(device => [device.mac, device]));
+        health.textContent = 'Server Online';
+        if (!devices.length) { document.querySelector('#devices').innerHTML='<p class="empty">Waiting for an MTTL-W01 device.</p>'; return; }
+        document.querySelector('#devices').innerHTML = devices.map(d => `
+          <article class="card">
+            <div class="title"><div class="device-heading"><div class="name-row"><h2>${esc(d.name)}</h2><button class="icon-button" title="Edit device name" onclick="editDeviceName('${d.mac}')">✎</button></div><span class="fw-version">(FW Ver : ${esc(d.firmware?.version ?? 'Unknown')})</span></div><span class="dot ${d.state?.online?'on':''}"></span></div>
+            <dl><dt>Current Power</dt><dd>${esc(d.state?.power_w ?? '0')} W</dd><dt>Today</dt><dd>${d.energy?.today_kwh == null ? '—' : `${esc(d.energy.today_kwh)} kWh`}</dd><dt>RSSI</dt><dd>${esc(d.state?.rssi ?? '-')} dBm</dd></dl>
+            <div class="bulk"><button onclick="control('${d.mac}','main/on')">All ON</button><button onclick="control('${d.mac}','main/off')">All OFF</button><button onclick="control('${d.mac}','refresh')">Refresh</button></div>
+            <div class="outlets">${[1,2,3,4].map((n,i)=>`<div><button class="icon-button" title="Edit channel name" onclick="editChannelName('${d.mac}',${i})">✎</button><b>${esc(d.channels?.[i] ?? n)}</b><span>${esc(d.state?.channels?.[i]?.power_w ?? '0')} W</span><button class="${d.state?.channels?.[i]?.on?'active':''}" onclick="control('${d.mac}','channels/${n}/${d.state?.channels?.[i]?.on?'off':'on'}')">${d.state?.channels?.[i]?.on?'ON':'OFF'}</button></div>`).join('')}</div>
+            <div class="card-tools"><label class="ha-link">HA Link <span class="toggle"><input type="checkbox" ${d.ha_link?'checked':''} onchange="setHaLink('${d.mac}',this.checked)"><span class="slider"></span></span></label><button class="danger" onclick="deleteDevice('${d.mac}')">Delete Device</button></div>
+          </article>`).join('');
+      } catch (_) { health.textContent = 'Server Error'; }
+    }
+    async function control(mac, action) {
+      const response = await fetch(`/api/devices/${mac}/${action}`, {method:'POST'});
+      if (!response.ok) alert((await response.json()).error || 'Command failed');
+      setTimeout(refresh, 800);
+    }
+    async function refreshDnat() {
+      const config = await fetch('/api/dnat/config').then(r=>r.json());
+      if (config.configured && !routerHost.value) {
+        routerHost.value=config.router.host; routerUser.value=config.router.username; serverIp.value=config.server_ip;
+      }
+      if (!config.configured) { dnatState.textContent='Setup Required'; return; }
+      const response=await fetch('/api/dnat/status'); const state=await response.json();
+      dnatState.textContent=state.state==='on'?'Enabled':state.state==='off'?'Disabled':state.state==='partial'?'Partially Enabled':`Error: ${state.error||''}`;
+      dnatState.className=`badge ${state.state}`;
+      const labels=['Certificate 80→18080','MEF 443→18443','MQTT 18831→18832'];
+      dnatDetails.innerHTML=(state.rules||[false,false,false]).map((on,i)=>`<span class="${on?'ok':'bad'}">${labels[i]}: ${on?'Enabled':'Disabled'}</span>`).join('');
+    }
+    async function saveDnat() {
+      const body={server_ip:serverIp.value,router:{host:routerHost.value,port:22,username:routerUser.value,password:routerPassword.value}};
+      const response=await fetch('/api/dnat/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const value=await response.json(); if(!response.ok) return alert(value.error||'Save failed');
+      routerPassword.value=''; await refreshDnat();
+    }
+    function showHAStatus(config) {
+      haPassword.placeholder=config.has_password?'Saved — enter only to change':'Enter password';
+      haConnectionStatus.textContent=config.connected?'Connected':'Disconnected';
+      haLastConnected.textContent=config.last_connected?new Date(config.last_connected).toLocaleString():'Never';
+      haState.textContent=config.connected?'Connected':config.configured?(config.error?`Error: ${config.error}`:'Connecting'):'Not Configured';
+      haState.className=`badge ${config.connected?'on':config.error?'error':''}`;
+    }
+    async function loadHAConfig() {
+      const config=await fetch('/api/ha/config').then(r=>r.json());
+      const values=[[haHost,config.host||''],[haPort,config.port||1883],[haUser,config.username||''],[haDiscovery,config.discovery_prefix||'homeassistant'],[haTopic,config.topic_prefix||'mttl']];
+      values.forEach(([input,value])=>{if(!input.dataset.edited)input.value=value;});
+      showHAStatus(config);
+    }
+    async function refreshHA() {
+      showHAStatus(await fetch('/api/ha/config').then(r=>r.json()));
+    }
+    async function saveHA() {
+      const body={host:haHost.value,port:Number(haPort.value),username:haUser.value,password:haPassword.value,discovery_prefix:haDiscovery.value,topic_prefix:haTopic.value};
+      const response=await fetch('/api/ha/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const value=await response.json();
+      if(!response.ok)return alert(value.error||'MQTT settings failed');haPassword.value='';setTimeout(refreshHA,1000);
+    }
+    function toggleHAPassword() {
+      const visible=haPassword.type==='text';haPassword.type=visible?'password':'text';
+      haPasswordToggle.title=visible?'Show password':'Hide password';haPasswordToggle.setAttribute('aria-label',haPasswordToggle.title);
+    }
+    async function setHaLink(mac,enabled) {
+      const response=await fetch(`/api/devices/${mac}/ha-link`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});
+      if(!response.ok){alert((await response.json()).error||'HA Link update failed');await refresh();}
+    }
+    async function dnatAction(action) {
+      if ((action==='enable'||action==='disable') && !confirm(`${action==='enable'?'Enable':'Disable'} DNAT?`)) return;
+      const response=await fetch(`/api/dnat/${action}`,{method:'POST'}); const value=await response.json();
+      if(!response.ok) alert(value.error||'DNAT operation failed'); else if(action==='test') alert('Router SSH, iptables, and conntrack are available.');
+      await refreshDnat();
+    }
+    async function saveNames(mac,name,channels) {
+      const response=await fetch(`/api/devices/${mac}/settings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,channels})});
+      const value=await response.json(); if(!response.ok){alert(value.error||'Name update failed');return false;} await refresh();return true;
+    }
+    async function editDeviceName(mac) {
+      const device=deviceCache.get(mac); if(!device)return;
+      const name=prompt('Device name',device.name); if(name===null) return;
+      await saveNames(mac,name,device.channels);
+    }
+    async function editChannelName(mac,index) {
+      const device=deviceCache.get(mac); if(!device)return;
+      const channels=[...device.channels];
+      const name=prompt(`Channel ${index+1} name`,channels[index]??String(index+1));if(name===null)return;
+      channels[index]=name;await saveNames(mac,device.name,channels);
+    }
+    async function deleteDevice(mac) {
+      const name=deviceCache.get(mac)?.name??mac;
+      if(!confirm(`Delete '${name}'?\nThe device and its stored data will be removed completely. Provision it again to create a new card.`))return;
+      const response=await fetch(`/api/devices/${mac}/delete`,{method:'POST'});const value=await response.json();
+      if(!response.ok)return alert(value.error||'Delete failed');await refresh();
+    }
+    refresh(); refreshDnat(); loadHAConfig(); setInterval(refresh, 5000); setInterval(refreshDnat, 15000); setInterval(refreshHA, 5000);
+  </script>
+</body>
+</html>

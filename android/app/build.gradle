@@ -1,0 +1,21 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.mttl.local.provisioner'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.mttl.local.provisioner'
+        minSdk 26
+        targetSdk 36
+        versionCode 14
+        versionName '0.3.2'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+    }
+}
