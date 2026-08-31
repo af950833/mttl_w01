@@ -429,3 +429,22 @@ curl http://127.0.0.1:18833/api/health
 | 로컬 서버 및 웹 대시보드 | `20260901` |
 | Android Provisioner | `0.3.2` (`versionCode 14`) |
 | 내장 MTTL-W01 펌웨어 | `1.0.66` |
+
+## Version history
+
+### `20260901`
+
+- QMS HTTPS 요청을 로컬에서 수신하고 빈 `HTTP 200` 응답을 반환하도록 추가
+- QMS 목적지 `61.34.165.80:443`을 기존 ASUS Router DNAT의 네 번째 규칙으로 통합
+- 기존 `root-ca.key`를 사용해 `qms.crt`와 `qms.key`만 추가할 수 있도록 인증서 생성 기능 확장
+- 기존 사용자가 CA와 프로비저닝 상태를 유지하면서 업데이트할 수 있는 절차 추가
+- MQTT 명령 처리와 연결 상태 관리 안정성 개선
+
+### `20260831`
+
+- MTTL-W01 로컬 서버 및 카드형 웹 대시보드 최초 공개
+- 멀티탭 전체/채널 제어, 상태·전력·Today Usage 표시 지원
+- Home Assistant MQTT Discovery 및 기기별 HA Link 지원
+- ASUS 공유기 목적지 기반 DNAT 자동 관리 지원
+- Android Provisioner `0.3.2`와 QR/APK 다운로드 제공
+- 정식 MTTL-W01 펌웨어 `1.0.66` OTA 제공

@@ -429,3 +429,22 @@ If the log contains `missing certificate files`, verify the files and mount path
 | Local server and web dashboard | `20260901` |
 | Android Provisioner | `0.3.2` (`versionCode 14`) |
 | Bundled MTTL-W01 firmware | `1.0.66` |
+
+## Version history
+
+### `20260901`
+
+- Added a local QMS HTTPS receiver that returns an empty `HTTP 200` response
+- Integrated QMS destination `61.34.165.80:443` as the fourth ASUS Router DNAT rule
+- Extended certificate generation to add only `qms.crt` and `qms.key` using the existing `root-ca.key`
+- Added an update path that preserves the existing CA and device provisioning
+- Improved MQTT command handling and connection-state reliability
+
+### `20260831`
+
+- Initial public release of the MTTL-W01 local server and card-based web dashboard
+- Added all/channel control, device state, power, and Today Usage display
+- Added Home Assistant MQTT Discovery and per-device HA Link
+- Added automatic destination-based DNAT management for ASUS routers
+- Included Android Provisioner `0.3.2` with QR/APK download
+- Included official MTTL-W01 firmware `1.0.66` for OTA updates
