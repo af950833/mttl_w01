@@ -20,13 +20,14 @@ LG U+ `MTTL-W01` 스마트 멀티탭을 제조사 클라우드 없이 내부망�
 
 ## 동작 구조
 
-멀티탭은 원래 제조사 서버 IP로 접속하지만, ASUS 공유기의 DNAT가 아래 세 연결만 Docker 서버로 전달합니다.
+멀티탭은 원래 제조사 서버 IP로 접속하지만, ASUS 공유기의 DNAT가 아래 네 연결만 Docker 서버로 전달합니다.
 
 | 원래 목적지 | 로컬 서버 목적지 | 용도 |
 | --- | --- | --- |
 | `106.103.210.126:80` | `LOCAL_SERVER_IP:18080` | 자체 CA 다운로드 |
 | `106.103.210.126:443` | `LOCAL_SERVER_IP:18443` | MEF 등록 및 OTA 확인 |
 | `106.103.210.119:18831` | `LOCAL_SERVER_IP:18832` | 멀티탭 TLS MQTT |
+| `61.34.165.80:443` | `LOCAL_SERVER_IP:19443` | QMS 진단 로그 수신 및 성공 응답 |
 
 멀티탭의 출발지 IP를 고정하거나 기기별 DNAT 규칙을 만들 필요는 없습니다. 다만 위 목적지 IP를 사용하는 다른 LG U+ IoT 기기가 같은 네트워크에 있다면 그 기기의 통신도 영향을 받을 수 있습니다.
 
@@ -93,6 +94,7 @@ docker run --rm \
 - `root-ca.crt`, `root-ca.key`
 - `mef.crt`, `mef.key`
 - `brk2.crt`, `brk2.key`
+- `qms.crt`, `qms.key`
 
 확인 명령:
 
@@ -100,7 +102,7 @@ docker run --rm \
 sudo ls -l /srv/mttl/certs
 ```
 
-완전한 인증서 세트가 이미 있으면 생성 명령은 기존 인증서를 덮어쓰지 않습니다. 일부 파일만 남은 불완전한 상태에서도 자동 교체하지 않으므로, 복구할 인증서가 없다면 인증서 디렉터리를 비운 뒤 다시 생성해야 합니다.
+완전한 인증서 세트가 이미 있으면 생성 명령은 기존 인증서를 덮어쓰지 않습니다. 이전 버전의 6개 인증서가 있고 `root-ca.key`가 보존되어 있으면 기존 CA로 `qms.crt`와 `qms.key`만 추가합니다. 일부 기본 파일만 남은 불완전한 상태에서는 자동 교체하지 않습니다.
 
 `root-ca.key`는 서버의 개인키입니다. 공개 저장소나 공유 폴더에 복사하지 마십시오. 이미 등록한 멀티탭을 계속 사용하려면 `/srv/mttl/certs`를 반드시 백업해야 합니다.
 
@@ -137,6 +139,7 @@ curl http://127.0.0.1:18833/api/health
 | `18080` | 멀티탭 CA 다운로드 |
 | `18443` | TLS MEF 등록 및 OTA |
 | `18832` | 멀티탭 TLS MQTT |
+| `19443` | QMS TLS 진단 로그 수신 |
 | `18833` | 웹 대시보드와 REST API |
 
 UFW 명령은 **서버에서 UFW를 활성화하여 사용하는 경우에만 필요한 선택 사항**입니다. `sudo ufw status` 결과가 `inactive`라면 아래 규칙을 실행할 필요가 없습니다.
@@ -148,6 +151,7 @@ sudo ufw allow from 192.168.0.0/24 to any port 18080 proto tcp
 sudo ufw allow from 192.168.0.0/24 to any port 18443 proto tcp
 sudo ufw allow from 192.168.0.0/24 to any port 18832 proto tcp
 sudo ufw allow from 192.168.0.0/24 to any port 18833 proto tcp
+sudo ufw allow from 192.168.0.0/24 to any port 19443 proto tcp
 ```
 
 실제 네트워크가 다르면 `192.168.0.0/24`를 내부망 대역으로 변경하십시오.
@@ -160,6 +164,10 @@ sudo ufw allow from 192.168.0.0/24 to any port 18833 proto tcp
 cd mttl_w01
 git pull
 docker build -t mttl-local:latest .
+sudo test -s /srv/mttl/certs/root-ca.key
+docker run --rm \
+  -v /srv/mttl/certs:/certs \
+  mttl-local:latest generate-certs
 docker stop mttl-local
 docker rm mttl-local
 docker run -d \
@@ -171,7 +179,9 @@ docker run -d \
   mttl-local:latest
 ```
 
-볼륨의 `/srv/mttl/data`와 `/srv/mttl/certs`는 컨테이너를 삭제해도 유지됩니다. 인증서 생성 명령은 다시 실행하지 않아도 됩니다.
+업데이트 시 인증서 생성 명령은 기존 CA와 서버 인증서를 변경하지 않고 필요한 새 인증서만 추가합니다. `root-ca.key` 검사에서 실패하면 진행을 중단하고 인증서 백업을 복원하십시오. 기존 CA 개인키 없이 새 CA를 생성하면 이미 등록된 멀티탭은 새 CA를 신뢰하지 않으므로 초기화 후 재프로비저닝해야 합니다.
+
+업데이트 후 DNAT 카드가 **Partially Enabled**로 표시되면 **Disable DNAT**을 누른 뒤 **Enable DNAT**을 눌러 QMS를 포함한 네 규칙을 다시 적용합니다. 기존 CA가 보존되었다면 멀티탭을 재프로비저닝할 필요가 없습니다.
 
 ## 8. 웹 대시보드 접속
 
@@ -200,8 +210,8 @@ ASUS 공유기 관리 페이지에서 SSH를 활성화한 다음 대시보드의
 
 1. **Save Settings**를 눌러 저장합니다.
 2. **Test Connection**으로 SSH, `iptables`, `conntrack` 사용 가능 여부를 확인합니다.
-3. **Enable DNAT**을 눌러 세 개의 전달 규칙을 적용합니다.
-4. 카드 우측 상태가 **Enabled**이고 세 규칙이 모두 `Enabled`인지 확인합니다.
+3. **Enable DNAT**을 눌러 네 개의 전달 규칙을 적용합니다.
+4. 카드 우측 상태가 **Enabled**이고 네 규칙이 모두 `Enabled`인지 확인합니다.
 
 서버는 공유기에 `MTTL_DNAT`이라는 별도 NAT 체인을 만들고 기존 연결의 conntrack 항목을 정리합니다. 공유기 암호는 `/data/router-dnat.json`에 권한 `0600`으로 저장되며 대시보드 API로 반환되지 않습니다.
 
@@ -219,10 +229,12 @@ LOCAL_SERVER_IP=192.168.0.4
 /usr/sbin/iptables -t nat -A MTTL_DNAT -d 106.103.210.126/32 -p tcp --dport 80 -j DNAT --to-destination ${LOCAL_SERVER_IP}:18080
 /usr/sbin/iptables -t nat -A MTTL_DNAT -d 106.103.210.126/32 -p tcp --dport 443 -j DNAT --to-destination ${LOCAL_SERVER_IP}:18443
 /usr/sbin/iptables -t nat -A MTTL_DNAT -d 106.103.210.119/32 -p tcp --dport 18831 -j DNAT --to-destination ${LOCAL_SERVER_IP}:18832
+/usr/sbin/iptables -t nat -A MTTL_DNAT -d 61.34.165.80/32 -p tcp --dport 443 -j DNAT --to-destination ${LOCAL_SERVER_IP}:19443
 
 /usr/sbin/conntrack -D -d 106.103.210.126 -p tcp --dport 80
 /usr/sbin/conntrack -D -d 106.103.210.126 -p tcp --dport 443
 /usr/sbin/conntrack -D -d 106.103.210.119 -p tcp --dport 18831
+/usr/sbin/conntrack -D -d 61.34.165.80 -p tcp --dport 443
 ```
 
 적용 상태 확인:
@@ -241,11 +253,12 @@ LOCAL_SERVER_IP=192.168.0.4
 /usr/sbin/conntrack -D -d 106.103.210.126 -p tcp --dport 80
 /usr/sbin/conntrack -D -d 106.103.210.126 -p tcp --dport 443
 /usr/sbin/conntrack -D -d 106.103.210.119 -p tcp --dport 18831
+/usr/sbin/conntrack -D -d 61.34.165.80 -p tcp --dport 443
 ```
 
 위 생성 명령은 빈 상태에서 한 번 실행하는 기준입니다. 같은 명령을 반복하면 규칙이 중복되거나 `Chain already exists` 오류가 발생할 수 있습니다. 대시보드 자동 관리와 수동 설정을 동시에 사용하지 마십시오. 일반적인 ASUS 펌웨어에서는 재부팅 후 직접 추가한 규칙이 사라질 수 있으므로, 영구 적용이 필요하다면 ASUSWRT-Merlin의 방화벽 시작 스크립트 등 사용 중인 펌웨어에 맞는 방법을 별도로 적용해야 합니다.
 
-ASUS 이외의 공유기는 프로젝트가 DNAT를 자동 설정하지 않습니다. 해당 공유기의 포트 포워딩, 정책 NAT 또는 방화벽 기능을 이용하여 위 표의 **목적지 IP와 목적지 포트 기준 DNAT 세 규칙**을 사용자가 직접 구현해야 합니다. 일반적인 외부 포트 포워딩과 달리 LAN 클라이언트가 특정 인터넷 IP로 보내는 트래픽을 내부 서버로 바꾸는 기능이 필요합니다.
+ASUS 이외의 공유기는 프로젝트가 DNAT를 자동 설정하지 않습니다. 해당 공유기의 포트 포워딩, 정책 NAT 또는 방화벽 기능을 이용하여 위 표의 **목적지 IP와 목적지 포트 기준 DNAT 네 규칙**을 사용자가 직접 구현해야 합니다. 일반적인 외부 포트 포워딩과 달리 LAN 클라이언트가 특정 인터넷 IP로 보내는 트래픽을 내부 서버로 바꾸는 기능이 필요합니다.
 
 ## 10. Android 프로비저닝 앱 설치
 
@@ -371,7 +384,7 @@ docker logs -f mttl-local
 ```bash
 docker ps --filter name=mttl-local
 docker logs --tail 200 mttl-local
-sudo ss -lntp | grep -E '18080|18443|18832|18833'
+sudo ss -lntp | grep -E '18080|18443|18832|18833|19443'
 curl http://127.0.0.1:18833/api/health
 ```
 
@@ -389,9 +402,9 @@ curl http://127.0.0.1:18833/api/health
 
 ### 프로비저닝 후 기기가 오프라인일 때
 
-- DNAT 세 항목이 모두 Enabled인지 확인합니다.
+- DNAT 네 항목이 모두 Enabled인지 확인합니다.
 - 멀티탭이 2.4 GHz Wi-Fi를 사용하는지 확인합니다.
-- 서버 방화벽이 `18080`, `18443`, `18832`를 허용하는지 확인합니다.
+- 서버 방화벽이 `18080`, `18443`, `18832`, `19443`을 허용하는지 확인합니다.
 - `docker logs -f mttl-local` 상태에서 멀티탭 전원을 다시 연결합니다.
 - SSID 또는 암호에 `:`가 있으면 현재 펌웨어의 로컬 명령 형식상 사용할 수 없습니다.
 
@@ -413,6 +426,6 @@ curl http://127.0.0.1:18833/api/health
 
 | 구성 요소 | 버전 |
 | --- | --- |
-| 로컬 서버 및 웹 대시보드 | `20260831` |
+| 로컬 서버 및 웹 대시보드 | `20260901` |
 | Android Provisioner | `0.3.2` (`versionCode 14`) |
 | 내장 MTTL-W01 펌웨어 | `1.0.66` |

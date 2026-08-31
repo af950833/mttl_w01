@@ -21,7 +21,7 @@
   </style>
 </head>
 <body>
-  <header><h1>MTTL-W01</h1><div class="header-tools"><span id="health">Connecting</span><small class="server-version">Ver : 20260831</small></div></header>
+  <header><h1>MTTL-W01</h1><div class="header-tools"><span id="health">Connecting</span><small class="server-version">Ver : 20260901</small></div></header>
   <section class="app-download">
     <div><h2>Android Provisioning App</h2><p>Scan on a phone connected to this LAN, or use the direct download link.</p><a class="app-download-button" href="/downloads/MTTL-W01-Provisioner.apk" download>Download MTTL-W01 Provisioner</a></div>
     <a href="/downloads/MTTL-W01-Provisioner.apk" aria-label="Download Android provisioning app"><img src="/downloads/MTTL-W01-Provisioner-QR.png" alt="QR code for MTTL-W01 Provisioner APK download"></a>
@@ -36,8 +36,8 @@
       <label>Local Server IP<input id="serverIp" placeholder="192.168.0.4"></label>
     </div>
     <div class="bulk"><button onclick="saveDnat()">Save Settings</button><button onclick="dnatAction('test')">Test Connection</button><button onclick="dnatAction('enable')">Enable DNAT</button><button onclick="dnatAction('disable')">Disable DNAT</button></div>
-    <div id="dnatDetails" class="dnat-details"><span>Certificate: Checking</span><span>MEF: Checking</span><span>MQTT: Checking</span></div>
-    <small>Redirects only 106.103.210.126:80/443 and 106.103.210.119:18831 to the local server.</small>
+    <div id="dnatDetails" class="dnat-details"><span>Certificate: Checking</span><span>MEF: Checking</span><span>MQTT: Checking</span><span>QMS: Checking</span></div>
+    <small>Redirects only the four known MTTL-W01 service endpoints to the local server.</small>
   </section>
   <section class="ha-mqtt">
     <div class="title"><h2>Home Assistant MQTT</h2><span id="haState" class="badge">Not Configured</span></div>
@@ -88,8 +88,8 @@
       const response=await fetch('/api/dnat/status'); const state=await response.json();
       dnatState.textContent=state.state==='on'?'Enabled':state.state==='off'?'Disabled':state.state==='partial'?'Partially Enabled':`Error: ${state.error||''}`;
       dnatState.className=`badge ${state.state}`;
-      const labels=['Certificate 80→18080','MEF 443→18443','MQTT 18831→18832'];
-      dnatDetails.innerHTML=(state.rules||[false,false,false]).map((on,i)=>`<span class="${on?'ok':'bad'}">${labels[i]}: ${on?'Enabled':'Disabled'}</span>`).join('');
+      const labels=['Certificate 80→18080','MEF 443→18443','MQTT 18831→18832','QMS 443→19443'];
+      dnatDetails.innerHTML=(state.rules||[false,false,false,false]).map((on,i)=>`<span class="${on?'ok':'bad'}">${labels[i]}: ${on?'Enabled':'Disabled'}</span>`).join('');
     }
     async function saveDnat() {
       const body={server_ip:serverIp.value,router:{host:routerHost.value,port:22,username:routerUser.value,password:routerPassword.value}};

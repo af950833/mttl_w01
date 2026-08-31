@@ -13,6 +13,7 @@ from .store import FileStore
 from .mqtt_server import MQTTServer
 from .dnat import DNATError, DNATManager
 from .ha_mqtt import HAMQTTBridge
+from .qms_server import QMSServer
 
 
 DATA_DIR = Path(os.getenv("MTTL_DATA_DIR", "/data"))
@@ -22,6 +23,7 @@ REGISTRY = DeviceRegistry(STORE)
 DNAT = DNATManager(DATA_DIR)
 MQTT = None
 HA = None
+QMS = None
 
 
 class WebHandler(BaseHTTPRequestHandler):
@@ -160,9 +162,9 @@ def run_legacy_services():
 
 
 def main():
-    global MQTT, HA
+    global MQTT, HA, QMS
     cert_dir = Path(os.getenv("MTTL_CERT_DIR", "/certs"))
-    required = ("root-ca.crt", "mef.crt", "mef.key", "brk2.crt", "brk2.key")
+    required = ("root-ca.crt", "root-ca.key", "mef.crt", "mef.key", "brk2.crt", "brk2.key", "qms.crt", "qms.key")
     missing = [name for name in required if not (cert_dir / name).is_file()]
     if missing:
         raise SystemExit(f"missing certificate files in {cert_dir}: {', '.join(missing)}")
@@ -183,8 +185,16 @@ def main():
     MQTT.start()
     HA = HAMQTTBridge(STORE, lambda mac, command, value: MQTT.command(mac, command, value))
     HA.start()
+    QMS = QMSServer(
+        STORE,
+        host=os.getenv("MTTL_QMS_BIND", "0.0.0.0"),
+        port=int(os.getenv("MTTL_QMS_PORT", "19443")),
+        cert_dir=str(cert_dir),
+    )
+    QMS.start()
 
     def stop(*_):
+        QMS.stop()
         for process in processes:
             process.terminate()
         raise SystemExit(0)

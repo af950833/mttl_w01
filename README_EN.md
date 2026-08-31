@@ -20,13 +20,14 @@ Main features:
 
 ## How it works
 
-The power strip attempts to connect to the original manufacturer server IP addresses. Destination NAT on the router redirects only the following connections to the Docker server.
+The power strip attempts to connect to the original manufacturer server IP addresses. Destination NAT on the router redirects only the following four connections to the Docker server.
 
 | Original destination | Local destination | Purpose |
 | --- | --- | --- |
 | `106.103.210.126:80` | `LOCAL_SERVER_IP:18080` | Local CA download |
 | `106.103.210.126:443` | `LOCAL_SERVER_IP:18443` | MEF enrollment and OTA check |
 | `106.103.210.119:18831` | `LOCAL_SERVER_IP:18832` | Device TLS MQTT |
+| `61.34.165.80:443` | `LOCAL_SERVER_IP:19443` | QMS diagnostic log receiver and success response |
 
 You do not need to assign a fixed IP to each power strip or create per-device DNAT rules. However, other LG U+ IoT devices on the same network that use these destination IP addresses may also be affected.
 
@@ -93,6 +94,7 @@ Generated files:
 - `root-ca.crt`, `root-ca.key`
 - `mef.crt`, `mef.key`
 - `brk2.crt`, `brk2.key`
+- `qms.crt`, `qms.key`
 
 Verify the files:
 
@@ -100,7 +102,7 @@ Verify the files:
 sudo ls -l /srv/mttl/certs
 ```
 
-The command will not overwrite an existing complete certificate set. It also refuses to replace a partial set automatically. If the set is incomplete and no backup is available, empty the certificate directory and generate a new set.
+The command will not overwrite an existing complete certificate set. If the six certificates from an earlier version and `root-ca.key` are present, it adds only `qms.crt` and `qms.key`, signed by the existing CA. It refuses to replace an incomplete base set automatically.
 
 `root-ca.key` is the private key for this installation. Do not upload it to a public repository or shared folder. Back up `/srv/mttl/certs` if you want already-provisioned devices to continue trusting this server.
 
@@ -137,6 +139,7 @@ Allow the following TCP ports on the server:
 | `18080` | Device CA download |
 | `18443` | TLS MEF enrollment and OTA |
 | `18832` | Device TLS MQTT |
+| `19443` | QMS TLS diagnostic log receiver |
 | `18833` | Web dashboard and REST API |
 
 The UFW commands below are optional and are needed only when UFW is enabled on the server. If `sudo ufw status` reports `inactive`, you do not need to add these rules.
@@ -148,6 +151,7 @@ sudo ufw allow from 192.168.0.0/24 to any port 18080 proto tcp
 sudo ufw allow from 192.168.0.0/24 to any port 18443 proto tcp
 sudo ufw allow from 192.168.0.0/24 to any port 18832 proto tcp
 sudo ufw allow from 192.168.0.0/24 to any port 18833 proto tcp
+sudo ufw allow from 192.168.0.0/24 to any port 19443 proto tcp
 ```
 
 Replace `192.168.0.0/24` with your actual LAN subnet.
@@ -160,6 +164,10 @@ After the initial installation, back up the persistent data and run the followin
 cd mttl_w01
 git pull
 docker build -t mttl-local:latest .
+sudo test -s /srv/mttl/certs/root-ca.key
+docker run --rm \
+  -v /srv/mttl/certs:/certs \
+  mttl-local:latest generate-certs
 docker stop mttl-local
 docker rm mttl-local
 docker run -d \
@@ -171,7 +179,9 @@ docker run -d \
   mttl-local:latest
 ```
 
-The `/srv/mttl/data` and `/srv/mttl/certs` bind mounts remain intact when the container is removed. You do not need to generate the certificates again.
+During an update, the certificate command preserves the existing CA and server certificates and adds only newly required certificates. If the `root-ca.key` check fails, stop and restore the certificate backup. Creating a new CA without the existing private key requires resetting and provisioning the devices again because they do not trust the new CA.
+
+If the DNAT card shows **Partially Enabled** after the update, select **Disable DNAT** and then **Enable DNAT** to install all four rules, including QMS. Devices do not need to be provisioned again when the existing CA has been preserved.
 
 ## 8. Open the web dashboard
 
@@ -200,8 +210,8 @@ Configuration sequence:
 
 1. Select **Save Settings**.
 2. Select **Test Connection** to verify SSH, `iptables`, and `conntrack`.
-3. Select **Enable DNAT** to install the three redirect rules.
-4. Confirm that the card shows **Enabled** and that all three rules are enabled.
+3. Select **Enable DNAT** to install the four redirect rules.
+4. Confirm that the card shows **Enabled** and that all four rules are enabled.
 
 The server creates a separate `MTTL_DNAT` NAT chain and clears matching conntrack entries. The router password is stored in `/data/router-dnat.json` with mode `0600` and is never returned by the dashboard API.
 
@@ -219,10 +229,12 @@ LOCAL_SERVER_IP=192.168.0.4
 /usr/sbin/iptables -t nat -A MTTL_DNAT -d 106.103.210.126/32 -p tcp --dport 80 -j DNAT --to-destination ${LOCAL_SERVER_IP}:18080
 /usr/sbin/iptables -t nat -A MTTL_DNAT -d 106.103.210.126/32 -p tcp --dport 443 -j DNAT --to-destination ${LOCAL_SERVER_IP}:18443
 /usr/sbin/iptables -t nat -A MTTL_DNAT -d 106.103.210.119/32 -p tcp --dport 18831 -j DNAT --to-destination ${LOCAL_SERVER_IP}:18832
+/usr/sbin/iptables -t nat -A MTTL_DNAT -d 61.34.165.80/32 -p tcp --dport 443 -j DNAT --to-destination ${LOCAL_SERVER_IP}:19443
 
 /usr/sbin/conntrack -D -d 106.103.210.126 -p tcp --dport 80
 /usr/sbin/conntrack -D -d 106.103.210.126 -p tcp --dport 443
 /usr/sbin/conntrack -D -d 106.103.210.119 -p tcp --dport 18831
+/usr/sbin/conntrack -D -d 61.34.165.80 -p tcp --dport 443
 ```
 
 Check the rules:
@@ -241,11 +253,12 @@ Remove the manual rules:
 /usr/sbin/conntrack -D -d 106.103.210.126 -p tcp --dport 80
 /usr/sbin/conntrack -D -d 106.103.210.126 -p tcp --dport 443
 /usr/sbin/conntrack -D -d 106.103.210.119 -p tcp --dport 18831
+/usr/sbin/conntrack -D -d 61.34.165.80 -p tcp --dport 443
 ```
 
 The creation commands assume an empty initial state. Repeating them can duplicate rules or produce a `Chain already exists` error. Do not use manual rules and dashboard management at the same time. Manually added rules may disappear after a router reboot. If persistent rules are required, use the appropriate startup mechanism for your firmware, such as an ASUSWRT-Merlin firewall-start script.
 
-Routers from other manufacturers are not configured automatically by this project. Users must implement the three **destination IP and destination port based DNAT rules** using their router's policy NAT or firewall features. Ordinary inbound Internet port forwarding is not sufficient; the router must redirect traffic that a LAN client sends to the specified Internet IP addresses.
+Routers from other manufacturers are not configured automatically by this project. Users must implement the four **destination IP and destination port based DNAT rules** using their router's policy NAT or firewall features. Ordinary inbound Internet port forwarding is not sufficient; the router must redirect traffic that a LAN client sends to the specified Internet IP addresses.
 
 ## 10. Install the Android provisioning app
 
@@ -371,7 +384,7 @@ If the certificate directory is lost, devices that trust the previous CA may nee
 ```bash
 docker ps --filter name=mttl-local
 docker logs --tail 200 mttl-local
-sudo ss -lntp | grep -E '18080|18443|18832|18833'
+sudo ss -lntp | grep -E '18080|18443|18832|18833|19443'
 curl http://127.0.0.1:18833/api/health
 ```
 
@@ -389,9 +402,9 @@ If the log contains `missing certificate files`, verify the files and mount path
 
 ### The device remains offline after provisioning
 
-- Confirm that all three DNAT entries are enabled.
+- Confirm that all four DNAT entries are enabled.
 - Confirm that the power strip is using 2.4 GHz Wi-Fi.
-- Allow ports `18080`, `18443`, and `18832` through the server firewall.
+- Allow ports `18080`, `18443`, `18832`, and `19443` through the server firewall.
 - Run `docker logs -f mttl-local`, then reconnect power to the device.
 - The current firmware's local command format cannot use a colon (`:`) in the SSID or password.
 
@@ -413,6 +426,6 @@ If the log contains `missing certificate files`, verify the files and mount path
 
 | Component | Version |
 | --- | --- |
-| Local server and web dashboard | `20260831` |
+| Local server and web dashboard | `20260901` |
 | Android Provisioner | `0.3.2` (`versionCode 14`) |
 | Bundled MTTL-W01 firmware | `1.0.66` |
