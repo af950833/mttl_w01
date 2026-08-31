@@ -269,6 +269,9 @@ class MQTTServer:
                 sessions = list(self.sessions.values())
             for session in sessions:
                 now = time.time()
+                if now - session.last_seen >= self.offline_timeout:
+                    self._expire(session, immediate=True)
+                    continue
                 if now < session.next_poll:
                     continue
                 try:
@@ -278,12 +281,15 @@ class MQTTServer:
                 except (OSError, RuntimeError):
                     self._expire(session)
 
-    def _expire(self, session):
+    def _expire(self, session, immediate=False):
         with self.sessions_lock:
             if self.sessions.get(session.mac) is not session:
                 return
             self.sessions.pop(session.mac, None)
-        self._schedule_offline(session)
+        if immediate:
+            self._set_online(session, False)
+        else:
+            self._schedule_offline(session)
         try:
             session.connection.shutdown(socket.SHUT_RDWR)
         except OSError:
