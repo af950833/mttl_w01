@@ -139,6 +139,8 @@ curl http://127.0.0.1:18833/api/health
 | `18832` | 멀티탭 TLS MQTT |
 | `18833` | 웹 대시보드와 REST API |
 
+UFW 명령은 **서버에서 UFW를 활성화하여 사용하는 경우에만 필요한 선택 사항**입니다. `sudo ufw status` 결과가 `inactive`라면 아래 규칙을 실행할 필요가 없습니다.
+
 UFW 사용 예시:
 
 ```bash
@@ -184,6 +186,46 @@ ASUS 공유기 관리 페이지에서 SSH를 활성화한 다음 대시보드의
 
 제조사 서버에 임시로 연결하거나 DNAT가 필요 없을 때는 **Disable DNAT**을 누릅니다.
 
+### ASUS 공유기에서 수동으로 DNAT 설정하기
+
+대시보드의 DNAT 관리 기능을 사용하지 않을 경우 ASUS 공유기에 SSH로 접속하여 직접 규칙을 만들 수도 있습니다. 다음 예시는 로컬 서버 IP가 `192.168.0.4`인 경우입니다. IP가 다르면 첫 줄의 값을 변경하십시오.
+
+```sh
+LOCAL_SERVER_IP=192.168.0.4
+
+/usr/sbin/iptables -t nat -N MTTL_DNAT
+/usr/sbin/iptables -t nat -I PREROUTING 1 -j MTTL_DNAT
+/usr/sbin/iptables -t nat -A MTTL_DNAT -d 106.103.210.126/32 -p tcp --dport 80 -j DNAT --to-destination ${LOCAL_SERVER_IP}:18080
+/usr/sbin/iptables -t nat -A MTTL_DNAT -d 106.103.210.126/32 -p tcp --dport 443 -j DNAT --to-destination ${LOCAL_SERVER_IP}:18443
+/usr/sbin/iptables -t nat -A MTTL_DNAT -d 106.103.210.119/32 -p tcp --dport 18831 -j DNAT --to-destination ${LOCAL_SERVER_IP}:18832
+
+/usr/sbin/conntrack -D -d 106.103.210.126 -p tcp --dport 80
+/usr/sbin/conntrack -D -d 106.103.210.126 -p tcp --dport 443
+/usr/sbin/conntrack -D -d 106.103.210.119 -p tcp --dport 18831
+```
+
+적용 상태 확인:
+
+```sh
+/usr/sbin/iptables -t nat -nL MTTL_DNAT -v
+```
+
+수동 규칙 제거:
+
+```sh
+/usr/sbin/iptables -t nat -D PREROUTING -j MTTL_DNAT
+/usr/sbin/iptables -t nat -F MTTL_DNAT
+/usr/sbin/iptables -t nat -X MTTL_DNAT
+
+/usr/sbin/conntrack -D -d 106.103.210.126 -p tcp --dport 80
+/usr/sbin/conntrack -D -d 106.103.210.126 -p tcp --dport 443
+/usr/sbin/conntrack -D -d 106.103.210.119 -p tcp --dport 18831
+```
+
+위 생성 명령은 빈 상태에서 한 번 실행하는 기준입니다. 같은 명령을 반복하면 규칙이 중복되거나 `Chain already exists` 오류가 발생할 수 있습니다. 대시보드 자동 관리와 수동 설정을 동시에 사용하지 마십시오. 일반적인 ASUS 펌웨어에서는 재부팅 후 직접 추가한 규칙이 사라질 수 있으므로, 영구 적용이 필요하다면 ASUSWRT-Merlin의 방화벽 시작 스크립트 등 사용 중인 펌웨어에 맞는 방법을 별도로 적용해야 합니다.
+
+ASUS 이외의 공유기는 프로젝트가 DNAT를 자동 설정하지 않습니다. 해당 공유기의 포트 포워딩, 정책 NAT 또는 방화벽 기능을 이용하여 위 표의 **목적지 IP와 목적지 포트 기준 DNAT 세 규칙**을 사용자가 직접 구현해야 합니다. 일반적인 외부 포트 포워딩과 달리 LAN 클라이언트가 특정 인터넷 IP로 보내는 트래픽을 내부 서버로 바꾸는 기능이 필요합니다.
+
 ## 9. Android 프로비저닝 앱 설치
 
 대시보드 최상단의 QR 코드를 Android 휴대전화로 스캔하거나 아래 주소에서 APK를 받습니다.
@@ -202,20 +244,20 @@ Android가 경고하면 해당 브라우저 또는 파일 관리자의 **알 수
 
 프로비저닝 전에 DNAT를 활성화하고 Docker 서버가 정상 동작 중인지 확인합니다.
 
-1. 앱에서 **SCAN WI-FI Network**를 누릅니다.
-2. **Home Wi-Fi SSID**에서 멀티탭이 사용할 2.4 GHz Wi-Fi를 선택합니다.
-3. **Home Wi-Fi password**에 암호를 입력합니다.
-4. 멀티탭의 메인 버튼을 약 10초 이상 눌러 상태 LED가 빠르게 깜박이게 합니다.
-5. `ONLY_TAP_XXXXXXX` 또는 `TONLY_TAP_XXXXXXX` 형식의 설정 AP가 나타날 때까지 기다립니다.
+1. 멀티탭의 메인 버튼을 약 10초 이상 눌러 상태 LED가 빠르게 깜박이게 합니다.
+2. `ONLY_TAP_XXXXXXX` 또는 `TONLY_TAP_XXXXXXX` 형식의 설정 AP가 나타날 때까지 기다립니다.
+3. 앱에서 **SCAN WI-FI Network**를 누릅니다.
+4. **Home Wi-Fi SSID**에서 멀티탭이 사용할 2.4 GHz Wi-Fi를 선택합니다.
+5. **Home Wi-Fi password**에 암호를 입력합니다.
 6. 앱에서 해당 멀티탭 AP를 선택하고 **Provision**을 누릅니다.
 7. Android의 Wi-Fi 연결 승인 창이 나타나면 허용합니다.
 8. 앱 로그에 **Provision Success**와 **You can close this APP**이 표시될 때까지 기다립니다.
-9. 멀티탭이 재부팅하고 홈 Wi-Fi에 연결될 때까지 기다립니다. 필요한 경우 전원을 한 번 껐다가 켭니다.
+9. 멀티탭이 자동으로 재부팅하고 홈 Wi-Fi에 연결될 때까지 기다립니다.
 10. 대시보드에 새 카드가 나타나고 상태 표시가 녹색으로 바뀌는지 확인합니다.
 
 앱은 설정 AP 이름의 마지막 7자리로 `LGU_XXXXXXX` 형식의 AP 암호를 자동 계산합니다. 홈 Wi-Fi 정보는 멀티탭의 로컬 포트 `30300`으로 직접 전송합니다.
 
-대시보드에서 카드만 삭제해도 이미 프로비저닝된 멀티탭이 서버에 재접속하면 카드가 다시 생성될 수 있습니다. 완전히 다시 등록하려면 멀티탭을 초기화한 뒤 프로비저닝하십시오.
+대시보드에서 카드만 삭제해도 이미 프로비저닝된 멀티탭이 서버에 재접속하면 카드가 다시 생성될 수 있습니다. 완전히 삭제하려면 멀티탭을 초기화한 뒤 카드를 삭제하세요.
 
 ## 11. 대시보드 기능
 
