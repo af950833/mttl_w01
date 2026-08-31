@@ -51,6 +51,12 @@ class WebHandler(BaseHTTPRequestHandler):
             return self.send_bytes(json.dumps(value).encode(), "application/json", status)
         if self.path == "/api/ha/config":
             return self.send_bytes(json.dumps(HA.public_config()).encode(), "application/json")
+        if self.path.startswith("/api/commands/"):
+            request_id = self.path.removeprefix("/api/commands/")
+            value = MQTT.command_status(request_id)
+            if value is None:
+                return self.send_bytes(b'{"error":"command not found"}', "application/json", 404)
+            return self.send_bytes(json.dumps(value).encode(), "application/json")
         name = "index.html" if self.path in ("/", "/dashboard") else self.path.lstrip("/")
         path = (WEB_DIR / name).resolve()
         if WEB_DIR.resolve() not in path.parents and path != WEB_DIR.resolve():
@@ -119,7 +125,12 @@ class WebHandler(BaseHTTPRequestHandler):
                 request_id = MQTT.command(mac, f"POWER{number}_SET", "FF" if parts[5] == "on" else "00")
             else:
                 return self.send_bytes(b'{"error":"not found"}', "application/json", 404)
-            body = json.dumps({"accepted": True, "request_id": request_id}).encode()
+            body = json.dumps({
+                "accepted": True,
+                "status": "sent",
+                "request_id": request_id,
+                "status_url": f"/api/commands/{request_id}",
+            }).encode()
             return self.send_bytes(body, "application/json", 202)
         except KeyError as error:
             message = "device offline" if parts[3] not in ("settings", "delete") else str(error).strip("'")
@@ -164,6 +175,10 @@ def main():
         cert_dir=str(cert_dir),
         poll_interval=int(os.getenv("MTTL_POLL_INTERVAL", "15")),
         offline_timeout=int(os.getenv("MTTL_OFFLINE_TIMEOUT", "45")),
+        active_poll_interval=int(os.getenv("MTTL_ACTIVE_POLL_INTERVAL", "5")),
+        settled_status_delay=float(os.getenv("MTTL_SETTLED_STATUS_DELAY", "3.5")),
+        command_active_seconds=int(os.getenv("MTTL_COMMAND_ACTIVE_SECONDS", "30")),
+        command_confirm_timeout=int(os.getenv("MTTL_COMMAND_CONFIRM_TIMEOUT", "12")),
     )
     MQTT.start()
     HA = HAMQTTBridge(STORE, lambda mac, command, value: MQTT.command(mac, command, value))

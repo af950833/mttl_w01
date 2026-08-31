@@ -20,8 +20,10 @@ def remaining(length):
 
 def body_offset(packet):
     index = 1
-    while packet[index] & 0x80:
+    while index < len(packet) and packet[index] & 0x80:
         index += 1
+    if index >= len(packet):
+        raise ValueError("truncated MQTT remaining length")
     return index + 1
 
 
@@ -32,7 +34,7 @@ def read_packet(connection):
     packet = bytearray(first)
     multiplier = 1
     length = 0
-    while True:
+    for length_byte in range(4):
         byte = connection.recv(1)
         if not byte:
             return bytes(packet)
@@ -41,6 +43,10 @@ def read_packet(connection):
         if not byte[0] & 128:
             break
         multiplier *= 128
+    else:
+        raise ValueError("invalid MQTT remaining length")
+    if length > 1024 * 1024:
+        raise ValueError("MQTT packet exceeds 1 MiB")
     while length:
         chunk = connection.recv(length)
         if not chunk:
@@ -51,8 +57,12 @@ def read_packet(connection):
 
 
 def mqtt_string(data, offset):
+    if offset < 0 or offset + 2 > len(data):
+        raise ValueError("truncated MQTT string length")
     length = int.from_bytes(data[offset : offset + 2], "big")
     start = offset + 2
+    if start + length > len(data):
+        raise ValueError("truncated MQTT string")
     return data[start : start + length].decode("utf-8", "replace"), start + length
 
 
@@ -76,6 +86,8 @@ class DeviceSession:
         self.command_topic = None
         self.connected_at = time.time()
         self.last_seen = time.time()
+        self.next_poll = time.time()
+        self.active_until = time.time() + 60
 
     def send(self, content):
         topic = self.command_topic
@@ -87,11 +99,11 @@ class DeviceSession:
         with self.lock:
             self.connection.sendall(b"\x30" + remaining(len(body)) + body)
 
-    def control(self, command, value=None):
+    def control(self, command, value=None, *, activate=True, track=True):
         request_id = f"local-control-{time.time_ns()}"
         if command == "STATUS_GET":
             command_id = 2
-            parameters = [{"command": command, "filter": "ALL"}]
+            parameters = [{"command": command}]
         elif command.endswith("_GET"):
             command_id = 2
             parameters = [{"command": command}]
@@ -130,21 +142,38 @@ class DeviceSession:
             }},
         }
         self.send(outer)
+        if activate:
+            self.active_until = time.time() + self.server.command_active_seconds
+            self.next_poll = min(self.next_poll, time.time() + self.server.active_poll_interval)
+        if track:
+            self.server._command_sent(self, request_id, command, value)
+        if activate and command.endswith("_SET"):
+            self.server._schedule_settled_status(self)
         self.server.store.append_event({"mac": self.mac, "kind": "command", "command": command, "value": value})
         return request_id
 
 
 class MQTTServer:
     def __init__(self, store, registry, host="0.0.0.0", port=18832, cert_dir="/certs",
-                 poll_interval=15, offline_timeout=45):
+                 poll_interval=15, offline_timeout=45, active_poll_interval=5,
+                 settled_status_delay=3.5, command_active_seconds=30,
+                 command_confirm_timeout=12):
         self.store = store
         self.registry = registry
         self.host = host
         self.port = port
         self.poll_interval = poll_interval
         self.offline_timeout = offline_timeout
+        self.active_poll_interval = max(1, active_poll_interval)
+        self.settled_status_delay = max(0.5, settled_status_delay)
+        self.command_active_seconds = max(1, command_active_seconds)
+        self.command_confirm_timeout = max(1, command_confirm_timeout)
         self.sessions = {}
         self.sessions_lock = threading.RLock()
+        self.offline_timers = {}
+        self.settled_timers = {}
+        self.commands = {}
+        self.commands_lock = threading.RLock()
         self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self.context.minimum_version = ssl.TLSVersion.TLSv1_2
         self.context.maximum_version = ssl.TLSVersion.TLSv1_2
@@ -162,6 +191,64 @@ class MQTTServer:
             raise KeyError("device offline")
         return session.control(command, value)
 
+    def command_status(self, request_id):
+        with self.commands_lock:
+            value = self.commands.get(request_id)
+            return dict(value) if value else None
+
+    def _command_sent(self, session, request_id, command, value):
+        with self.commands_lock:
+            self.commands[request_id] = {
+                "request_id": request_id, "mac": session.mac, "command": command,
+                "value": value, "status": "sent", "sent_at": datetime.now().astimezone().isoformat(),
+            }
+            if len(self.commands) > 500:
+                for key in list(self.commands)[:-400]:
+                    self.commands.pop(key, None)
+        timer = threading.Timer(self.command_confirm_timeout, self._mark_unconfirmed, args=(request_id,))
+        timer.daemon = True
+        timer.start()
+
+    def _mark_unconfirmed(self, request_id):
+        with self.commands_lock:
+            item = self.commands.get(request_id)
+            if item and item["status"] == "sent":
+                item["status"] = "unconfirmed"
+                item["finished_at"] = datetime.now().astimezone().isoformat()
+
+    def _confirm_commands(self, mac, state, status_report=False):
+        with self.commands_lock:
+            for item in self.commands.values():
+                if item["mac"] != mac or item["status"] != "sent":
+                    continue
+                command, value = item["command"], item["value"]
+                confirmed = command == "STATUS_GET" and status_report
+                if command == "POWER_SET" and "main_on" in state:
+                    confirmed = state["main_on"] == (value == "FF")
+                elif command.startswith("POWER") and command.endswith("_SET"):
+                    number = command.removeprefix("POWER").removesuffix("_SET")
+                    if number.isdigit() and 1 <= int(number) <= 4:
+                        channel = state.get("channels", [{}, {}, {}, {}])[int(number) - 1]
+                        confirmed = "on" in channel and channel["on"] == (value == "FF")
+                if confirmed:
+                    item["status"] = "confirmed"
+                    item["confirmed_at"] = datetime.now().astimezone().isoformat()
+
+    def _schedule_settled_status(self, session):
+        def run():
+            with self.sessions_lock:
+                current = self.sessions.get(session.mac)
+            if current is session:
+                self._safe_status(session)
+        with self.sessions_lock:
+            previous = self.settled_timers.pop(session.mac, None)
+            if previous:
+                previous.cancel()
+            timer = threading.Timer(self.settled_status_delay, run)
+            timer.daemon = True
+            self.settled_timers[session.mac] = timer
+            timer.start()
+
     def disconnect(self, mac):
         with self.sessions_lock:
             session = self.sessions.pop(mac, None)
@@ -177,15 +264,17 @@ class MQTTServer:
 
     def _poll(self):
         while True:
-            time.sleep(self.poll_interval)
+            time.sleep(1)
             with self.sessions_lock:
                 sessions = list(self.sessions.values())
             for session in sessions:
-                if time.time() - session.last_seen >= self.offline_timeout:
-                    self._expire(session)
+                now = time.time()
+                if now < session.next_poll:
                     continue
                 try:
-                    session.control("STATUS_GET")
+                    session.control("STATUS_GET", activate=False, track=False)
+                    interval = self.active_poll_interval if now < session.active_until else self.poll_interval
+                    session.next_poll = now + interval
                 except (OSError, RuntimeError):
                     self._expire(session)
 
@@ -194,7 +283,7 @@ class MQTTServer:
             if self.sessions.get(session.mac) is not session:
                 return
             self.sessions.pop(session.mac, None)
-        self._set_online(session, False)
+        self._schedule_offline(session)
         try:
             session.connection.shutdown(socket.SHUT_RDWR)
         except OSError:
@@ -203,6 +292,22 @@ class MQTTServer:
             session.connection.close()
         except OSError:
             pass
+
+    def _schedule_offline(self, session):
+        def mark():
+            with self.sessions_lock:
+                if self.sessions.get(session.mac) is not None:
+                    return
+                self.offline_timers.pop(session.mac, None)
+            self._set_online(session, False)
+        with self.sessions_lock:
+            previous = self.offline_timers.pop(session.mac, None)
+            if previous:
+                previous.cancel()
+            timer = threading.Timer(self.offline_timeout, mark)
+            timer.daemon = True
+            self.offline_timers[session.mac] = timer
+            timer.start()
 
     def _listen(self):
         with socket.create_server((self.host, self.port)) as listener:
@@ -230,6 +335,9 @@ class MQTTServer:
                 device = self.registry.enroll(mac)
             session = DeviceSession(self, connection, address, entity, device)
             with self.sessions_lock:
+                pending_offline = self.offline_timers.pop(session.mac, None)
+                if pending_offline:
+                    pending_offline.cancel()
                 previous = self.sessions.get(session.mac)
                 self.sessions[session.mac] = session
             if previous:
@@ -255,7 +363,7 @@ class MQTTServer:
                         self.sessions.pop(session.mac, None)
                         mark_offline = True
                 if mark_offline:
-                    self._set_online(session, False)
+                    self._schedule_offline(session)
             if connection:
                 connection.close()
             else:
@@ -293,7 +401,9 @@ class MQTTServer:
             if session.command_topic:
                 threading.Timer(2, self._safe_status, args=(session,)).start()
         elif packet_type == 3:
-            topic, payload, packet_id = self._publish(packet, offset)
+            topic, payload, packet_id, qos = self._publish(packet, offset)
+            if qos == 2:
+                raise ValueError("MQTT QoS 2 is not supported")
             if packet_id:
                 with session.lock:
                     session.connection.sendall(b"\x40\x02" + packet_id)
@@ -305,7 +415,7 @@ class MQTTServer:
 
     def _safe_status(self, session):
         try:
-            session.control("STATUS_GET")
+            session.control("STATUS_GET", activate=False, track=False)
         except (OSError, RuntimeError):
             pass
 
@@ -313,10 +423,14 @@ class MQTTServer:
     def _publish(packet, offset):
         topic, cursor = mqtt_string(packet, offset)
         qos = (packet[0] >> 1) & 3
-        packet_id = packet[cursor : cursor + 2] if qos else None
+        if qos == 3:
+            raise ValueError("invalid MQTT QoS")
+        if qos and cursor + 2 > len(packet):
+            raise ValueError("truncated MQTT packet identifier")
+        packet_id = packet[cursor : cursor + 2] if qos == 1 else None
         if qos:
             cursor += 2
-        return topic, packet[cursor:], packet_id
+        return topic, packet[cursor:], packet_id, qos
 
     def _send_response(self, session, topic, response):
         parts = topic.split("/")
@@ -415,6 +529,7 @@ class MQTTServer:
                 self._energy(session, item)
         state.update({"online": True, "last_seen": datetime.now().astimezone().isoformat()})
         self.store.write("state", session.mac, state)
+        self._confirm_commands(session.mac, state, status_report=True)
         self.store.append_event({"mac": session.mac, "kind": "status", "state": state})
 
     def _events(self, session, parameters):
@@ -439,6 +554,7 @@ class MQTTServer:
             self.store.append_event({"mac": session.mac, "kind": "physical", "payload": item})
         state.update({"online": True, "last_seen": datetime.now().astimezone().isoformat()})
         self.store.write("state", session.mac, state)
+        self._confirm_commands(session.mac, state)
 
     def _energy(self, session, item):
         now = datetime.now().astimezone()

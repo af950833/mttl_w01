@@ -2,7 +2,7 @@ import json
 import os
 import re
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 
@@ -10,6 +10,8 @@ class FileStore:
     def __init__(self, root):
         self.root = Path(root)
         self.lock = threading.RLock()
+        self.log_retention_days = max(1, int(os.getenv("MTTL_LOG_RETENTION_DAYS", "14")))
+        self._last_log_cleanup = None
         for name in ("devices", "state", "energy", "firmware", "logs"):
             (self.root / name).mkdir(parents=True, exist_ok=True)
         self._import_latest_firmware()
@@ -72,7 +74,28 @@ class FileStore:
 
     def append_event(self, event):
         now = datetime.now().astimezone()
+        self._cleanup_logs(now)
         event = {"timestamp": now.isoformat(), **event}
         path = self.root / "logs" / f"events-{now:%Y-%m-%d}.jsonl"
         with self.lock, path.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
+
+    def _cleanup_logs(self, now):
+        today = now.date()
+        if self._last_log_cleanup == today:
+            return
+        cutoff = today - timedelta(days=self.log_retention_days - 1)
+        with self.lock:
+            if self._last_log_cleanup == today:
+                return
+            for path in (self.root / "logs").glob("events-*.jsonl"):
+                try:
+                    log_date = datetime.strptime(path.stem.removeprefix("events-"), "%Y-%m-%d").date()
+                except ValueError:
+                    continue
+                if log_date < cutoff:
+                    try:
+                        path.unlink()
+                    except FileNotFoundError:
+                        pass
+            self._last_log_cleanup = today
