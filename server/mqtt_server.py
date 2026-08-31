@@ -181,6 +181,11 @@ class MQTTServer:
         self.context.load_cert_chain(os.path.join(cert_dir, "brk2.crt"), os.path.join(cert_dir, "brk2.key"))
 
     def start(self):
+        for device in self.store.list_devices():
+            state = device.get("state", {})
+            if state.get("online"):
+                state["online"] = False
+                self.store.write("state", device["mac"], state)
         threading.Thread(target=self._listen, daemon=True, name="mqtt-listener").start()
         threading.Thread(target=self._poll, daemon=True, name="mqtt-poller").start()
 
