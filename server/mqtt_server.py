@@ -157,7 +157,7 @@ class MQTTServer:
     def __init__(self, store, registry, host="0.0.0.0", port=18832, cert_dir="/certs",
                  poll_interval=15, offline_timeout=45, active_poll_interval=5,
                  settled_status_delay=3.5, command_active_seconds=30,
-                 command_confirm_timeout=12):
+                 command_confirm_timeout=12, on_change=None):
         self.store = store
         self.registry = registry
         self.host = host
@@ -168,6 +168,7 @@ class MQTTServer:
         self.settled_status_delay = max(0.5, settled_status_delay)
         self.command_active_seconds = max(1, command_active_seconds)
         self.command_confirm_timeout = max(1, command_confirm_timeout)
+        self.on_change = on_change or (lambda: None)
         self.sessions = {}
         self.sessions_lock = threading.RLock()
         self.offline_timers = {}
@@ -390,6 +391,7 @@ class MQTTServer:
             "last_seen": datetime.now().astimezone().isoformat(),
         })
         self.store.write("state", session.mac, state)
+        self.on_change()
 
     def _packet(self, session, packet):
         packet_type = packet[0] >> 4
@@ -540,6 +542,7 @@ class MQTTServer:
                 self._energy(session, item)
         state.update({"online": True, "last_seen": datetime.now().astimezone().isoformat()})
         self.store.write("state", session.mac, state)
+        self.on_change()
         self._confirm_commands(session.mac, state, status_report=True)
         self.store.append_event({"mac": session.mac, "kind": "status", "state": state})
 
@@ -565,6 +568,7 @@ class MQTTServer:
             self.store.append_event({"mac": session.mac, "kind": "physical", "payload": item})
         state.update({"online": True, "last_seen": datetime.now().astimezone().isoformat()})
         self.store.write("state", session.mac, state)
+        self.on_change()
         self._confirm_commands(session.mac, state)
 
     def _energy(self, session, item):

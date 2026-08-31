@@ -76,8 +76,16 @@
     }
     async function control(mac, action) {
       const response = await fetch(`/api/devices/${mac}/${action}`, {method:'POST'});
-      if (!response.ok) alert((await response.json()).error || 'Command failed');
-      setTimeout(refresh, 800);
+      const result = await response.json();
+      if (!response.ok) return alert(result.error || 'Command failed');
+      if (result.status_url) {
+        for (let attempt=0; attempt<20; attempt++) {
+          await new Promise(resolve=>setTimeout(resolve,100));
+          const status=await fetch(result.status_url).then(r=>r.ok?r.json():null).catch(()=>null);
+          if (status?.status==='confirmed' || status?.status==='unconfirmed') break;
+        }
+      }
+      await refresh();
     }
     async function refreshDnat() {
       const config = await fetch('/api/dnat/config').then(r=>r.json());
@@ -153,7 +161,13 @@
       const response=await fetch(`/api/devices/${mac}/delete`,{method:'POST'});const value=await response.json();
       if(!response.ok)return alert(value.error||'Delete failed');await refresh();
     }
-    refresh(); refreshDnat(); loadHAConfig(); setInterval(refresh, 5000); setInterval(refreshDnat, 15000); setInterval(refreshHA, 5000);
+    let eventRefreshTimer;
+    const deviceEvents=new EventSource('/api/events');
+    deviceEvents.addEventListener('devices',()=>{
+      clearTimeout(eventRefreshTimer);
+      eventRefreshTimer=setTimeout(refresh,50);
+    });
+    refresh(); refreshDnat(); loadHAConfig(); setInterval(refresh, 30000); setInterval(refreshDnat, 15000); setInterval(refreshHA, 5000);
   </script>
 </body>
 </html>

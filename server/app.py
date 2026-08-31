@@ -26,7 +26,28 @@ HA = None
 QMS = None
 
 
+class EventBroker:
+    def __init__(self):
+        self.condition = threading.Condition()
+        self.revision = 0
+
+    def publish(self):
+        with self.condition:
+            self.revision += 1
+            self.condition.notify_all()
+
+    def wait(self, revision, timeout=20):
+        with self.condition:
+            self.condition.wait_for(lambda: self.revision != revision, timeout)
+            return self.revision
+
+
+EVENTS = EventBroker()
+
+
 class WebHandler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
     def send_bytes(self, body, content_type, status=200):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
@@ -36,6 +57,8 @@ class WebHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        if self.path == "/api/events":
+            return self.send_events()
         if self.path == "/api/devices":
             body = json.dumps(STORE.list_devices(), ensure_ascii=False).encode()
             return self.send_bytes(body, "application/json; charset=utf-8")
@@ -71,6 +94,28 @@ class WebHandler(BaseHTTPRequestHandler):
         if path.suffix == ".html":
             content_type += "; charset=utf-8"
         self.send_bytes(body, content_type)
+
+    def send_events(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "keep-alive")
+        self.end_headers()
+        revision = EVENTS.revision
+        try:
+            self.wfile.write(b": connected\n\n")
+            self.wfile.flush()
+            while True:
+                current = EVENTS.wait(revision)
+                if current == revision:
+                    payload = b": keepalive\n\n"
+                else:
+                    revision = current
+                    payload = f"event: devices\ndata: {revision}\n\n".encode()
+                self.wfile.write(payload)
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            return
 
     def do_POST(self):
         if self.path == "/api/dnat/config":
@@ -181,6 +226,7 @@ def main():
         settled_status_delay=float(os.getenv("MTTL_SETTLED_STATUS_DELAY", "3.5")),
         command_active_seconds=int(os.getenv("MTTL_COMMAND_ACTIVE_SECONDS", "30")),
         command_confirm_timeout=int(os.getenv("MTTL_COMMAND_CONFIRM_TIMEOUT", "12")),
+        on_change=EVENTS.publish,
     )
     MQTT.start()
     HA = HAMQTTBridge(STORE, lambda mac, command, value: MQTT.command(mac, command, value))

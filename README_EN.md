@@ -439,6 +439,7 @@ If the log contains `missing certificate files`, verify the files and mount path
 - Extended certificate generation to add only `qms.crt` and `qms.key` using the existing `root-ca.key`
 - Added an update path that preserves the existing CA and device provisioning
 - Improved MQTT command handling and connection-state reliability
+- Added SSE live updates for web, physical-button, and Home Assistant state changes
 
 ### `20260831`
 
