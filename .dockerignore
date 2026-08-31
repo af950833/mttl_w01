@@ -1,10 +1,14 @@
 captures
-work
+work/*
 !work/ap/
+work/ap/*
 !work/ap/mttl_cert_server.py
 !work/ap/mttl_mef_proxy.py
+!work/firmware/
+work/firmware/*
+!work/firmware/1.0.66/
+work/firmware/1.0.66/*
+!work/firmware/1.0.66/comMTTL-W01_1.0.66.fwr
 .git
 __pycache__
 *.pyc
-*.fwr
-*.apk
