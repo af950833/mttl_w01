@@ -152,7 +152,28 @@ sudo ufw allow from 192.168.0.0/24 to any port 18833 proto tcp
 
 실제 네트워크가 다르면 `192.168.0.0/24`를 내부망 대역으로 변경하십시오.
 
-## 7. 웹 대시보드 접속
+## 7. 서버 업데이트
+
+최초 설치가 끝난 뒤 새 버전으로 업데이트할 때는 영구 데이터를 먼저 백업하고 저장소와 이미지를 갱신합니다.
+
+```bash
+cd mttl_w01
+git pull
+docker build -t mttl-local:latest .
+docker stop mttl-local
+docker rm mttl-local
+docker run -d \
+  --name mttl-local \
+  --restart unless-stopped \
+  --network host \
+  -v /srv/mttl/data:/data \
+  -v /srv/mttl/certs:/certs:ro \
+  mttl-local:latest
+```
+
+볼륨의 `/srv/mttl/data`와 `/srv/mttl/certs`는 컨테이너를 삭제해도 유지됩니다. 인증서 생성 명령은 다시 실행하지 않아도 됩니다.
+
+## 8. 웹 대시보드 접속
 
 브라우저에서 다음 주소를 엽니다.
 
@@ -166,7 +187,7 @@ http://LOCAL_SERVER_IP:18833/
 http://192.168.0.4:18833/
 ```
 
-## 8. ASUS Router DNAT 설정
+## 9. ASUS Router DNAT 설정
 
 ASUS 공유기 관리 페이지에서 SSH를 활성화한 다음 대시보드의 **ASUS Router DNAT** 카드에 입력합니다.
 
@@ -226,7 +247,7 @@ LOCAL_SERVER_IP=192.168.0.4
 
 ASUS 이외의 공유기는 프로젝트가 DNAT를 자동 설정하지 않습니다. 해당 공유기의 포트 포워딩, 정책 NAT 또는 방화벽 기능을 이용하여 위 표의 **목적지 IP와 목적지 포트 기준 DNAT 세 규칙**을 사용자가 직접 구현해야 합니다. 일반적인 외부 포트 포워딩과 달리 LAN 클라이언트가 특정 인터넷 IP로 보내는 트래픽을 내부 서버로 바꾸는 기능이 필요합니다.
 
-## 9. Android 프로비저닝 앱 설치
+## 10. Android 프로비저닝 앱 설치
 
 대시보드 최상단의 QR 코드를 Android 휴대전화로 스캔하거나 아래 주소에서 APK를 받습니다.
 
@@ -240,7 +261,7 @@ GitHub에서도 직접 받을 수 있습니다.
 
 Android가 경고하면 해당 브라우저 또는 파일 관리자의 **알 수 없는 앱 설치** 권한을 허용합니다. Wi-Fi 검색을 위한 위치 또는 주변 기기 권한도 허용해야 합니다.
 
-## 10. 멀티탭 프로비저닝
+## 11. 멀티탭 프로비저닝
 
 프로비저닝 전에 DNAT를 활성화하고 Docker 서버가 정상 동작 중인지 확인합니다.
 
@@ -259,7 +280,7 @@ Android가 경고하면 해당 브라우저 또는 파일 관리자의 **알 수
 
 대시보드에서 카드만 삭제해도 이미 프로비저닝된 멀티탭이 서버에 재접속하면 카드가 다시 생성될 수 있습니다. 완전히 삭제하려면 멀티탭을 초기화한 뒤 카드를 삭제하세요.
 
-## 11. 대시보드 기능
+## 12. 대시보드 기능
 
 - 기기 이름 및 채널 이름 변경
 - 전체 전원 및 1~4번 채널 개별 제어
@@ -271,7 +292,7 @@ Android가 경고하면 해당 브라우저 또는 파일 관리자의 **알 수
 
 연결이 끊기면 기본적으로 약 45초 뒤 오프라인으로 판단하며, 대시보드는 약 5초 간격으로 화면을 갱신합니다.
 
-## 12. Home Assistant MQTT 연동
+## 13. Home Assistant MQTT 연동
 
 Home Assistant에 MQTT 통합과 MQTT Broker가 먼저 준비되어 있어야 합니다. 대시보드의 **Home Assistant MQTT** 카드에 입력합니다.
 
@@ -304,7 +325,7 @@ sensor.mttl_97c0123_today_usage
 
 HA Link를 비활성화하면 MQTT Discovery 삭제 메시지가 발행됩니다. Home Assistant가 중지된 상태에서는 삭제를 즉시 처리하지 못할 수 있으므로 HA와 Broker가 실행 중일 때 비활성화하는 것이 좋습니다.
 
-## 13. 펌웨어 자동 업데이트
+## 14. 펌웨어 자동 업데이트
 
 이미지에는 수정하지 않은 MTTL-W01 정식 `1.0.66` 펌웨어가 포함됩니다. 기기가 로컬 MEF 서버에 보고한 버전이 `1.0.66`보다 낮으면 서버가 자동으로 업데이트를 제안하며, `1.0.66` 이상에는 제안하지 않습니다.
 
@@ -320,7 +341,7 @@ SHA256: d780b578af69d52f3a05191a8e7d91a20e05085a912722327481cd5663682c04
 docker logs -f mttl-local
 ```
 
-## 14. 데이터와 백업
+## 15. 데이터와 백업
 
 별도 DB 없이 영구 데이터는 `/srv/mttl/data`에 저장됩니다.
 
@@ -338,27 +359,6 @@ docker logs -f mttl-local
 ```
 
 인증서 디렉터리를 잃어버리면 기존 CA를 신뢰하도록 등록된 멀티탭을 초기화하고 다시 프로비저닝해야 할 수 있습니다.
-
-## 15. 서버 업데이트
-
-데이터를 백업한 다음 저장소와 이미지를 업데이트합니다.
-
-```bash
-cd mttl_w01
-git pull
-docker build -t mttl-local:latest .
-docker stop mttl-local
-docker rm mttl-local
-docker run -d \
-  --name mttl-local \
-  --restart unless-stopped \
-  --network host \
-  -v /srv/mttl/data:/data \
-  -v /srv/mttl/certs:/certs:ro \
-  mttl-local:latest
-```
-
-볼륨의 데이터와 인증서는 컨테이너를 삭제해도 유지됩니다.
 
 ## 16. 문제 해결
 
@@ -404,3 +404,11 @@ curl http://127.0.0.1:18833/api/health
 - 공유기 및 MQTT 암호가 저장되는 데이터 디렉터리 권한을 제한하십시오.
 - 생성한 CA 개인키를 저장소에 커밋하지 마십시오.
 - DNAT를 켜면 지정된 제조사 목적지의 통신이 로컬 서버로 전달됩니다.
+
+## 현재 버전
+
+| 구성 요소 | 버전 |
+| --- | --- |
+| 로컬 서버 및 웹 대시보드 | `20260831` |
+| Android Provisioner | `0.3.2` (`versionCode 14`) |
+| 내장 MTTL-W01 펌웨어 | `1.0.66` |
