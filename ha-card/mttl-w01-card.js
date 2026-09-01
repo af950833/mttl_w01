@@ -113,7 +113,7 @@ class MTTLW01Card extends HTMLElement {
       const active = entity?.state === "on";
       const name = this._channelName(ids.switches[index], entity, all, index + 1);
       const icon = String(this._config.channel_icons?.[index] || "").trim() || "mdi:power-socket-eu";
-      return `<button class="channel ${active ? "active" : ""} ${usable ? "" : "unavailable"}" data-entity="${ids.switches[index]}" ${usable ? "" : "disabled"}>
+      return `<button class="channel ${active ? "active" : ""} ${usable ? "" : "unavailable"}" data-entity="${ids.switches[index]}" data-power-entity="${ids.powers[index]}" ${usable ? "" : "disabled"}>
         <ha-icon class="channel-icon" icon="${this._escape(icon)}"></ha-icon>
         <span class="channel-name">${this._escape(name)}</span>
         <strong>${this._escape(this._format(powers[index], "— W"))}</strong>
@@ -150,9 +150,7 @@ class MTTLW01Card extends HTMLElement {
       <div class="channels ${this._config.compact ? "compact" : ""}">${channels}</div>
     </ha-card>`;
 
-    this.shadowRoot.querySelectorAll(".channel").forEach(button => {
-      button.addEventListener("click", () => this._call("toggle", button.dataset.entity));
-    });
+    this.shadowRoot.querySelectorAll(".channel").forEach(button => this._bindChannel(button));
     this.shadowRoot.querySelectorAll("[data-more-info]").forEach(button => {
       button.addEventListener("click", () => this._moreInfo(button.dataset.moreInfo));
     });
@@ -163,6 +161,38 @@ class MTTLW01Card extends HTMLElement {
 
   _call(service, entityId) {
     if (this._hass && entityId) this._hass.callService("switch", service, { entity_id: entityId });
+  }
+
+  _bindChannel(button) {
+    let timer;
+    let longPressed = false;
+    const cancel = () => {
+      if (timer) clearTimeout(timer);
+      timer = undefined;
+    };
+    button.addEventListener("pointerdown", event => {
+      if (event.button !== 0) return;
+      longPressed = false;
+      cancel();
+      timer = setTimeout(() => {
+        timer = undefined;
+        longPressed = true;
+        this._moreInfo(button.dataset.powerEntity);
+      }, 600);
+    });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(type => button.addEventListener(type, cancel));
+    button.addEventListener("contextmenu", event => {
+      if (longPressed) event.preventDefault();
+    });
+    button.addEventListener("click", event => {
+      if (longPressed) {
+        event.preventDefault();
+        event.stopPropagation();
+        longPressed = false;
+        return;
+      }
+      this._call("toggle", button.dataset.entity);
+    });
   }
 
   _moreInfo(entityId) {
