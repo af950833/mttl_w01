@@ -4,6 +4,8 @@
 
 LG U+ `MTTL-W01` 스마트 멀티탭을 제조사 클라우드 없이 내부망에서 사용하기 위한 Docker 기반 로컬 서버입니다.
 
+![MTTL-W01 로컬 서버 웹 대시보드](docs/dashboard.png)
+
 주요 기능:
 
 - 멀티탭 인증서 발급 및 로컬 서버 등록(MEF enrollment)
