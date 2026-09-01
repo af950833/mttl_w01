@@ -452,6 +452,7 @@ If the log contains `missing certificate files`, verify the files and mount path
 - Improved MQTT command handling and connection-state reliability
 - Added SSE live updates for web, physical-button, and Home Assistant state changes
 - Added an MTTL-W01 Lovelace card configured with only the final seven MAC characters
+- Added a visual editor for the MTTL-W01 card
 
 ### `20260831`
 

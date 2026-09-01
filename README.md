@@ -452,6 +452,7 @@ curl http://127.0.0.1:18833/api/health
 - MQTT 명령 처리와 연결 상태 관리 안정성 개선
 - SSE 실시간 알림으로 웹·물리 버튼·Home Assistant 제어 상태를 즉시 갱신
 - MAC 마지막 7자리만 입력하는 MTTL-W01 Lovelace 카드 추가
+- MTTL-W01 카드 비주얼 에디터 지원
 
 ### `20260831`
 

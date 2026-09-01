@@ -9,6 +9,10 @@ class MTTLW01Card extends HTMLElement {
     return { mac: "0000000" };
   }
 
+  static getConfigElement() {
+    return document.createElement("mttl-w01-card-editor");
+  }
+
   setConfig(config) {
     const mac = String(config.mac || "").replace(/[^0-9a-f]/gi, "").toLowerCase();
     if (!/^[0-9a-f]{7}$/.test(mac)) {
@@ -138,6 +142,81 @@ class MTTLW01Card extends HTMLElement {
   }
 }
 
+class MTTLW01CardEditor extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+  }
+
+  setConfig(config) {
+    this._config = { mac: "", name: "", compact: false, ...config };
+    this._render();
+  }
+
+  _render() {
+    if (!this._config) return;
+    this.shadowRoot.innerHTML = `<style>
+      .editor{display:grid;gap:16px;padding:8px 0}
+      ha-textfield{display:block;width:100%}
+      .option{display:flex;align-items:center;justify-content:space-between;gap:16px}
+      .description{color:var(--secondary-text-color);font-size:12px;margin-top:4px}
+      .error{color:var(--error-color);font-size:12px;min-height:16px}
+    </style>
+    <div class="editor">
+      <div>
+        <ha-textfield id="mac" label="MAC suffix (7 hexadecimal characters)" value="${this._escape(this._config.mac || "")}" maxlength="7" required></ha-textfield>
+        <div class="description">Example: 97C0123</div>
+        <div id="macError" class="error"></div>
+      </div>
+      <ha-textfield id="name" label="Card name (optional)" value="${this._escape(this._config.name || "")}"></ha-textfield>
+      <label class="option"><span>Keep four channels in one row on mobile</span><ha-switch id="compact" ${this._config.compact ? "checked" : ""}></ha-switch></label>
+    </div>`;
+
+    const mac = this.shadowRoot.querySelector("#mac");
+    const name = this.shadowRoot.querySelector("#name");
+    const compact = this.shadowRoot.querySelector("#compact");
+    mac.addEventListener("input", event => this._change("mac", event.target.value));
+    name.addEventListener("input", event => this._change("name", event.target.value));
+    compact.addEventListener("change", event => this._change("compact", event.target.checked));
+    this._validateMac();
+  }
+
+  _change(key, value) {
+    if (key === "mac") value = String(value).replace(/[^0-9a-f]/gi, "").slice(0, 7).toUpperCase();
+    this._config = { ...this._config, [key]: value };
+    if (key === "mac") {
+      const field = this.shadowRoot.querySelector("#mac");
+      if (field.value !== value) field.value = value;
+      this._validateMac();
+    }
+    this.dispatchEvent(new CustomEvent("config-changed", {
+      detail: { config: { ...this._config } },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  _validateMac() {
+    const value = String(this._config.mac || "").replace(/[^0-9a-f]/gi, "");
+    const valid = /^[0-9a-f]{7}$/i.test(value);
+    const field = this.shadowRoot.querySelector("#mac");
+    const error = this.shadowRoot.querySelector("#macError");
+    if (field) field.invalid = Boolean(value) && !valid;
+    if (error) error.textContent = !value ? "MAC suffix is required." : valid ? "" : "Enter exactly 7 hexadecimal characters.";
+  }
+
+  _escape(value) {
+    return String(value ?? "").replace(/[&<>"']/g, character => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    })[character]);
+  }
+}
+
+if (!customElements.get("mttl-w01-card-editor")) customElements.define("mttl-w01-card-editor", MTTLW01CardEditor);
 if (!customElements.get("mttl-w01-card")) customElements.define("mttl-w01-card", MTTLW01Card);
 window.customCards = window.customCards || [];
 window.customCards.push({

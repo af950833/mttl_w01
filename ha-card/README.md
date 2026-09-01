@@ -9,6 +9,8 @@ MTTL-W01의 MAC 마지막 7자리만 입력하면 전체 및 4개 채널 스위�
 3. `/local/mttl-w01-card.js`를 **JavaScript Module**로 등록합니다.
 4. 브라우저 캐시를 새로고침합니다.
 
+카드를 추가하면 Home Assistant 비주얼 에디터에서 MAC 마지막 7자리, 선택 카드 이름과 모바일 4열 유지 옵션을 설정할 수 있습니다.
+
 ## 사용
 
 ```yaml
