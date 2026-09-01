@@ -351,6 +351,8 @@ type: custom:mttl-w01-card
 mac: 97c0123
 ```
 
+![MTTL-W01 Home Assistant Lovelace 카드](ha-card/HA_card.png)
+
 상세 설치법과 선택 설정은 [`ha-card/README.md`](ha-card/README.md)를 참고하십시오. Home Assistant에서 기본 Entity ID를 직접 변경한 경우에는 자동 매핑되지 않습니다.
 
 ## 14. 펌웨어 자동 업데이트

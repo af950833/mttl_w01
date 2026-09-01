@@ -2,6 +2,8 @@
 
 MTTL-W01의 MAC 마지막 7자리만 입력하면 전체 및 4개 채널 스위치와 전력 센서를 자동으로 연결하는 Lovelace 카드입니다.
 
+![MTTL-W01 Home Assistant Lovelace 카드](HA_card.png)
+
 ## 설치
 
 1. `mttl-w01-card.js`를 Home Assistant의 `/config/www/`에 복사합니다.
