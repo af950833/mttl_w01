@@ -304,7 +304,7 @@ Deleting only the dashboard card does not deprovision the device. The card can r
 - Edit the device and outlet names
 - Control master power and outlets 1–4
 - View total and per-outlet current power
-- View Today usage
+- View the cumulative energy Meter
 - View firmware version and online status
 - Enable or disable **HA Link**
 - Delete a device card
@@ -337,16 +337,16 @@ sensor.mttl_97c0123_power1
 sensor.mttl_97c0123_power2
 sensor.mttl_97c0123_power3
 sensor.mttl_97c0123_power4
-sensor.mttl_97c0123_today_usage
+sensor.mttl_97c0123_meter
 ```
 
-The master switch is displayed as `SW All`, and the daily energy sensor is displayed as `Today Usage`. Online status is sent through MQTT availability for each entity instead of a separate sensor.
+The master switch is displayed as `SW All`, and the cumulative energy sensor is displayed as `Meter`. Online status is sent through MQTT availability for each entity instead of a separate sensor.
 
 Disabling HA Link publishes MQTT Discovery deletion messages. If Home Assistant is stopped, it may not process them immediately. Disable HA Link while Home Assistant and the broker are running.
 
 ### MTTL-W01 Lovelace card
 
-Copy [`ha-card/mttl-w01-card.js`](ha-card/mttl-w01-card.js) to Home Assistant's `/config/www/` directory and register `/local/mttl-w01-card.js` as a JavaScript Module resource. Enter only the final seven MAC characters to automatically arrange total power, Today Usage, the master switch, and four channel buttons with names and live power.
+Copy [`ha-card/mttl-w01-card.js`](ha-card/mttl-w01-card.js) to Home Assistant's `/config/www/` directory and register `/local/mttl-w01-card.js` as a JavaScript Module resource. Enter only the final seven MAC characters to automatically arrange total power, the cumulative Meter, the master switch, and four channel buttons with names and live power.
 
 ```yaml
 type: custom:mttl-w01-card
@@ -379,7 +379,7 @@ The server does not use a database. Persistent data is stored under `/srv/mttl/d
 
 - Device registration information and names
 - Outlet state and power information
-- Today usage snapshots
+- Cumulative energy Meter snapshots
 - DNAT and Home Assistant MQTT settings
 - Server logs
 
@@ -441,11 +441,17 @@ If the log contains `missing certificate files`, verify the files and mount path
 
 | Component | Version |
 | --- | --- |
-| Local server and web dashboard | `20260901` |
+| Local server and web dashboard | `20260902` |
 | Android Provisioner | `0.3.2` (`versionCode 14`) |
 | Bundled MTTL-W01 firmware | `1.0.66` |
 
 ## Version history
+
+### `20260902`
+
+- Corrected `meter_00` as a cumulative energy meter instead of daily usage
+- Renamed the dashboard value from `Today` to `Meter`
+- Renamed the Home Assistant sensor to `sensor.mttl_<MAC7>_meter` with display name `Meter`
 
 ### `20260901`
 
@@ -461,7 +467,7 @@ If the log contains `missing certificate files`, verify the files and mount path
 ### `20260831`
 
 - Initial public release of the MTTL-W01 local server and card-based web dashboard
-- Added all/channel control, device state, power, and Today Usage display
+- Added all/channel control, device state, power, and cumulative Meter display
 - Added Home Assistant MQTT Discovery and per-device HA Link
 - Added automatic destination-based DNAT management for ASUS routers
 - Included Android Provisioner `0.3.2` with QR/APK download

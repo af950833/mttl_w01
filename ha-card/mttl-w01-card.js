@@ -58,7 +58,7 @@ class MTTLW01Card extends HTMLElement {
       switches: [1, 2, 3, 4].map(number => `switch.${base}_sw${number}`),
       powerAll: `sensor.${base}_powerall`,
       powers: [1, 2, 3, 4].map(number => `sensor.${base}_power${number}`),
-      today: `sensor.${base}_today_usage`,
+      meter: `sensor.${base}_meter`,
     };
   }
 
@@ -144,7 +144,7 @@ class MTTLW01Card extends HTMLElement {
       <div class="header"><div class="title">${this._escape(title)}</div><div class="availability"><span class="dot ${available ? "online" : ""}"></span>${available ? "Online" : "Offline"}</div></div>
       <div class="summary">
         <button class="summary-item info" data-more-info="${ids.powerAll}"><span>Total</span><strong>${this._escape(this._format(this._entity(ids.powerAll), "— W"))}</strong></button>
-        <button class="summary-item info" data-more-info="${ids.today}"><span>Today</span><strong>${this._escape(this._format(this._entity(ids.today), "— kWh"))}</strong></button>
+        <button class="summary-item info" data-more-info="${ids.meter}"><span>Meter</span><strong>${this._escape(this._format(this._entity(ids.meter), "— kWh"))}</strong></button>
         <button class="summary-item all ${onCount === 4 ? "on" : onCount ? "partial" : ""}" data-all ${available ? "" : "disabled"}><span>ALL</span><strong>${allState}</strong></button>
       </div>
       <div class="channels ${this._config.compact ? "compact" : ""}">${channels}</div>

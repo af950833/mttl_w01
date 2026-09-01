@@ -304,7 +304,7 @@ APK를 신뢰하기 어려운 사용자는 제조사 앱을 설치하고 회원�
 - 기기 이름 및 채널 이름 변경
 - 전체 전원 및 1~4번 채널 개별 제어
 - 전체/채널별 현재 소비전력 확인
-- Today 사용량 확인
+- 누적 전력량 Meter 확인
 - 펌웨어 버전과 온라인 상태 확인
 - **HA Link** 활성화/비활성화
 - 기기 카드 삭제
@@ -337,16 +337,16 @@ sensor.mttl_97c0123_power1
 sensor.mttl_97c0123_power2
 sensor.mttl_97c0123_power3
 sensor.mttl_97c0123_power4
-sensor.mttl_97c0123_today_usage
+sensor.mttl_97c0123_meter
 ```
 
-전체 스위치 표시 이름은 `SW All`, 일일 사용량 센서는 `Today Usage`입니다. 온라인 여부는 별도 센서가 아니라 각 엔티티의 MQTT availability로 전달됩니다.
+전체 스위치 표시 이름은 `SW All`, 누적 전력량 센서는 `Meter`입니다. 온라인 여부는 별도 센서가 아니라 각 엔티티의 MQTT availability로 전달됩니다.
 
 HA Link를 비활성화하면 MQTT Discovery 삭제 메시지가 발행됩니다. Home Assistant가 중지된 상태에서는 삭제를 즉시 처리하지 못할 수 있으므로 HA와 Broker가 실행 중일 때 비활성화하는 것이 좋습니다.
 
 ### MTTL-W01 Lovelace 카드
 
-[`ha-card/mttl-w01-card.js`](ha-card/mttl-w01-card.js)를 Home Assistant의 `/config/www/`에 복사하고 `/local/mttl-w01-card.js`를 JavaScript Module 리소스로 등록합니다. MAC 마지막 7자리만 입력하면 전체 전력, Today Usage, 전체 스위치와 4개 채널의 이름·현재 전력·스위치를 자동 배치합니다.
+[`ha-card/mttl-w01-card.js`](ha-card/mttl-w01-card.js)를 Home Assistant의 `/config/www/`에 복사하고 `/local/mttl-w01-card.js`를 JavaScript Module 리소스로 등록합니다. MAC 마지막 7자리만 입력하면 전체 전력, 누적 Meter, 전체 스위치와 4개 채널의 이름·현재 전력·스위치를 자동 배치합니다.
 
 ```yaml
 type: custom:mttl-w01-card
@@ -379,7 +379,7 @@ docker logs -f mttl-local
 
 - 기기 등록 정보와 이름
 - 채널 상태와 전력 정보
-- Today 사용량 스냅샷
+- 누적 전력량 Meter 스냅샷
 - DNAT 및 Home Assistant MQTT 설정
 - 서버 로그
 
@@ -441,11 +441,17 @@ curl http://127.0.0.1:18833/api/health
 
 | 구성 요소 | 버전 |
 | --- | --- |
-| 로컬 서버 및 웹 대시보드 | `20260901` |
+| 로컬 서버 및 웹 대시보드 | `20260902` |
 | Android Provisioner | `0.3.2` (`versionCode 14`) |
 | 내장 MTTL-W01 펌웨어 | `1.0.66` |
 
 ## Version history
+
+### `20260902`
+
+- `meter_00`을 일일 사용량이 아닌 누적 전력량으로 정정
+- 대시보드 표시를 `Today`에서 `Meter`로 변경
+- Home Assistant 센서를 `sensor.mttl_<MAC7>_meter` 및 표시 이름 `Meter`로 변경
 
 ### `20260901`
 
@@ -461,7 +467,7 @@ curl http://127.0.0.1:18833/api/health
 ### `20260831`
 
 - MTTL-W01 로컬 서버 및 카드형 웹 대시보드 최초 공개
-- 멀티탭 전체/채널 제어, 상태·전력·Today Usage 표시 지원
+- 멀티탭 전체/채널 제어, 상태·전력·누적 Meter 표시 지원
 - Home Assistant MQTT Discovery 및 기기별 HA Link 지원
 - ASUS 공유기 목적지 기반 DNAT 자동 관리 지원
 - Android Provisioner `0.3.2`와 QR/APK 다운로드 제공

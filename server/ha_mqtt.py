@@ -161,8 +161,10 @@ class HAMQTTBridge:
             channel_name = device["channels"][number - 1] if number else None
             name = "Power All" if number == 0 else (f"Power {number}" if channel_name == str(number) else f"{channel_name} Power")
             entities.append(("sensor", object_id, {"name": name, "state_topic": f"{base}/state", "value_template": "{{ value_json.%s }}" % suffix, "unit_of_measurement": "W", "device_class": "power", "state_class": "measurement"}))
-        today_usage_id = f"mttl_{mac7}_today_usage"
-        entities.append(("sensor", today_usage_id, {"name": "Today Usage", "state_topic": f"{base}/state", "value_template": "{{ value_json.today_usage }}", "unit_of_measurement": "kWh", "device_class": "energy", "state_class": "total_increasing"}))
+        meter_id = f"mttl_{mac7}_meter"
+        entities.append(("sensor", meter_id, {"name": "Meter", "state_topic": f"{base}/state", "value_template": "{{ value_json.meter }}", "unit_of_measurement": "kWh", "device_class": "energy", "state_class": "total_increasing"}))
+        legacy_topic = f"{discovery}/sensor/mttl_{mac7}_today_usage/config"
+        self._publish(legacy_topic, "")
         for component, object_id, config in entities:
             topic = f"{discovery}/{component}/{object_id}/config"
             if remove:
@@ -178,7 +180,7 @@ class HAMQTTBridge:
         payload = {
             "all": "ON" if state.get("main_on") else "OFF",
             "powerall": state.get("power_w", 0),
-            "today_usage": device.get("energy", {}).get("today_kwh"),
+            "meter": device.get("energy", {}).get("meter_kwh", device.get("energy", {}).get("today_kwh")),
         }
         for number in range(1, 5):
             channel = channels[number - 1] if len(channels) >= number else {}

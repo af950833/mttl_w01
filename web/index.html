@@ -21,7 +21,7 @@
   </style>
 </head>
 <body>
-  <header><h1>MTTL-W01</h1><div class="header-tools"><span id="health">Connecting</span><small class="server-version">Ver : 20260901</small></div></header>
+  <header><h1>MTTL-W01</h1><div class="header-tools"><span id="health">Connecting</span><small class="server-version">Ver : 20260902</small></div></header>
   <section class="app-download">
     <div><h2>Android Provisioning App</h2><p>Scan on a phone connected to this LAN, or use the direct download link.</p><a class="app-download-button" href="/downloads/MTTL-W01-Provisioner.apk" download>Download MTTL-W01 Provisioner</a></div>
     <a href="/downloads/MTTL-W01-Provisioner.apk" aria-label="Download Android provisioning app"><img src="/downloads/MTTL-W01-Provisioner-QR.png" alt="QR code for MTTL-W01 Provisioner APK download"></a>
@@ -67,7 +67,7 @@
         document.querySelector('#devices').innerHTML = devices.map(d => `
           <article class="card">
             <div class="title"><div class="device-heading"><div class="name-row"><h2>${esc(d.name)}</h2><button class="icon-button" title="Edit device name" onclick="editDeviceName('${d.mac}')">✎</button></div><span class="fw-version">(FW Ver : ${esc(d.firmware?.version ?? 'Unknown')})</span></div><span class="dot ${d.state?.online?'on':''}"></span></div>
-            <dl><dt>Current Power</dt><dd>${esc(d.state?.power_w ?? '0')} W</dd><dt>Today</dt><dd>${d.energy?.today_kwh == null ? '—' : `${esc(d.energy.today_kwh)} kWh`}</dd><dt>RSSI</dt><dd>${esc(d.state?.rssi ?? '-')} dBm</dd></dl>
+            <dl><dt>Current Power</dt><dd>${esc(d.state?.power_w ?? '0')} W</dd><dt>Meter</dt><dd>${(d.energy?.meter_kwh ?? d.energy?.today_kwh) == null ? '—' : `${esc(d.energy?.meter_kwh ?? d.energy?.today_kwh)} kWh`}</dd><dt>RSSI</dt><dd>${esc(d.state?.rssi ?? '-')} dBm</dd></dl>
             <div class="bulk"><button onclick="control('${d.mac}','main/on')">All ON</button><button onclick="control('${d.mac}','main/off')">All OFF</button><button onclick="control('${d.mac}','refresh')">Refresh</button></div>
             <div class="outlets">${[1,2,3,4].map((n,i)=>`<div><button class="icon-button" title="Edit channel name" onclick="editChannelName('${d.mac}',${i})">✎</button><b>${esc(d.channels?.[i] ?? n)}</b><span>${esc(d.state?.channels?.[i]?.power_w ?? '0')} W</span><button class="${d.state?.channels?.[i]?.on?'active':''}" onclick="control('${d.mac}','channels/${n}/${d.state?.channels?.[i]?.on?'off':'on'}')">${d.state?.channels?.[i]?.on?'ON':'OFF'}</button></div>`).join('')}</div>
             <div class="card-tools"><label class="ha-link">HA Link <span class="toggle"><input type="checkbox" ${d.ha_link?'checked':''} onchange="setHaLink('${d.mac}',this.checked)"><span class="slider"></span></span></label><button class="danger" onclick="deleteDevice('${d.mac}')">Delete Device</button></div>

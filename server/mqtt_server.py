@@ -578,9 +578,9 @@ class MQTTServer:
             energy = {"month": f"{now:%Y-%m}", "month_estimated": 0.0}
         energy.update({
             "date": f"{now:%Y-%m-%d}",
-            "today_raw": item.get("meter_00"),
+            "meter_raw": item.get("meter_00"),
             "yesterday_raw": item.get("premeter_00"),
-            "today_kwh": self._kilowatt_hours(item.get("meter_00")),
+            "meter_kwh": self._kilowatt_hours(item.get("meter_00")),
             "yesterday_kwh": self._kilowatt_hours(item.get("premeter_00")),
             "updated_at": now.isoformat(),
         })
