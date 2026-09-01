@@ -309,7 +309,7 @@ Deleting only the dashboard card does not deprovision the device. The card can r
 - Enable or disable **HA Link**
 - Delete a device card
 
-An inactive device is marked offline after approximately 45 seconds. The dashboard refreshes approximately every five seconds.
+An inactive device is marked offline after approximately 45 seconds. Device state changes are reflected on the dashboard in real time through SSE, with a fallback refresh approximately every 30 seconds.
 
 ## 13. Home Assistant MQTT integration
 
