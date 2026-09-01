@@ -342,6 +342,17 @@ sensor.mttl_97c0123_today_usage
 
 HA Link를 비활성화하면 MQTT Discovery 삭제 메시지가 발행됩니다. Home Assistant가 중지된 상태에서는 삭제를 즉시 처리하지 못할 수 있으므로 HA와 Broker가 실행 중일 때 비활성화하는 것이 좋습니다.
 
+### MTTL-W01 Lovelace 카드
+
+[`ha-card/mttl-w01-card.js`](ha-card/mttl-w01-card.js)를 Home Assistant의 `/config/www/`에 복사하고 `/local/mttl-w01-card.js`를 JavaScript Module 리소스로 등록합니다. MAC 마지막 7자리만 입력하면 전체 전력, Today Usage, 전체 스위치와 4개 채널의 이름·현재 전력·스위치를 자동 배치합니다.
+
+```yaml
+type: custom:mttl-w01-card
+mac: 97c0123
+```
+
+상세 설치법과 선택 설정은 [`ha-card/README.md`](ha-card/README.md)를 참고하십시오. Home Assistant에서 기본 Entity ID를 직접 변경한 경우에는 자동 매핑되지 않습니다.
+
 ## 14. 펌웨어 자동 업데이트
 
 이미지에는 수정하지 않은 MTTL-W01 정식 `1.0.66` 펌웨어가 포함됩니다. 기기가 로컬 MEF 서버에 보고한 버전이 `1.0.66`보다 낮으면 서버가 자동으로 업데이트를 제안하며, `1.0.66` 이상에는 제안하지 않습니다.
@@ -440,6 +451,7 @@ curl http://127.0.0.1:18833/api/health
 - 기존 사용자가 CA와 프로비저닝 상태를 유지하면서 업데이트할 수 있는 절차 추가
 - MQTT 명령 처리와 연결 상태 관리 안정성 개선
 - SSE 실시간 알림으로 웹·물리 버튼·Home Assistant 제어 상태를 즉시 갱신
+- MAC 마지막 7자리만 입력하는 MTTL-W01 Lovelace 카드 추가
 
 ### `20260831`
 

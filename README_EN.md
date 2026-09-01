@@ -342,6 +342,17 @@ The master switch is displayed as `SW All`, and the daily energy sensor is displ
 
 Disabling HA Link publishes MQTT Discovery deletion messages. If Home Assistant is stopped, it may not process them immediately. Disable HA Link while Home Assistant and the broker are running.
 
+### MTTL-W01 Lovelace card
+
+Copy [`ha-card/mttl-w01-card.js`](ha-card/mttl-w01-card.js) to Home Assistant's `/config/www/` directory and register `/local/mttl-w01-card.js` as a JavaScript Module resource. Enter only the final seven MAC characters to automatically arrange total power, Today Usage, the master switch, and four channel buttons with names and live power.
+
+```yaml
+type: custom:mttl-w01-card
+mac: 97c0123
+```
+
+See [`ha-card/README.md`](ha-card/README.md) for installation details and optional settings. Automatic mapping will not work if the default Home Assistant Entity IDs have been changed manually.
+
 ## 14. Automatic firmware update
 
 The image includes the unmodified official MTTL-W01 `1.0.66` firmware. When a device reports a version older than `1.0.66` to the local MEF endpoint, the server automatically offers the update. Devices on `1.0.66` or later receive no update offer.
@@ -440,6 +451,7 @@ If the log contains `missing certificate files`, verify the files and mount path
 - Added an update path that preserves the existing CA and device provisioning
 - Improved MQTT command handling and connection-state reliability
 - Added SSE live updates for web, physical-button, and Home Assistant state changes
+- Added an MTTL-W01 Lovelace card configured with only the final seven MAC characters
 
 ### `20260831`
 
