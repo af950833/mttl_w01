@@ -26,10 +26,10 @@ LG U+ `MTTL-W01` 스마트 멀티탭을 제조사 클라우드 없이 내부망�
 
 | 원래 목적지 | 로컬 서버 목적지 | 용도 |
 | --- | --- | --- |
-| `106.103.210.126:80` | `LOCAL_SERVER_IP:18080` | 자체 CA 다운로드 |
-| `106.103.210.126:443` | `LOCAL_SERVER_IP:18443` | MEF 등록 및 OTA 확인 |
-| `106.103.210.119:18831` | `LOCAL_SERVER_IP:18832` | 멀티탭 TLS MQTT |
-| `61.34.165.80:443` | `LOCAL_SERVER_IP:19443` | QMS 진단 로그 수신 및 성공 응답 |
+| `106.103.210.126:80` (`mef.onem2m.uplus.co.kr`) | `LOCAL_SERVER_IP:18080` | 자체 CA 다운로드 |
+| `106.103.210.126:443` (`mef.onem2m.uplus.co.kr`) | `LOCAL_SERVER_IP:18443` | MEF 등록 및 OTA 확인 |
+| `106.103.210.119:18831` (`brk2.onem2m.uplus.co.kr`) | `LOCAL_SERVER_IP:18832` | 멀티탭 TLS MQTT |
+| `61.34.165.80:443` (`hdslog.lguplus.co.kr`) | `LOCAL_SERVER_IP:19443` | QMS 진단 로그 수신 및 성공 응답 |
 
 멀티탭의 출발지 IP를 고정하거나 기기별 DNAT 규칙을 만들 필요는 없습니다. 다만 위 목적지 IP를 사용하는 다른 LG U+ IoT 기기가 같은 네트워크에 있다면 그 기기의 통신도 영향을 받을 수 있습니다.
 

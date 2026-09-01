@@ -26,10 +26,10 @@ The power strip attempts to connect to the original manufacturer server IP addre
 
 | Original destination | Local destination | Purpose |
 | --- | --- | --- |
-| `106.103.210.126:80` | `LOCAL_SERVER_IP:18080` | Local CA download |
-| `106.103.210.126:443` | `LOCAL_SERVER_IP:18443` | MEF enrollment and OTA check |
-| `106.103.210.119:18831` | `LOCAL_SERVER_IP:18832` | Device TLS MQTT |
-| `61.34.165.80:443` | `LOCAL_SERVER_IP:19443` | QMS diagnostic log receiver and success response |
+| `106.103.210.126:80` (`mef.onem2m.uplus.co.kr`) | `LOCAL_SERVER_IP:18080` | Local CA download |
+| `106.103.210.126:443` (`mef.onem2m.uplus.co.kr`) | `LOCAL_SERVER_IP:18443` | MEF enrollment and OTA check |
+| `106.103.210.119:18831` (`brk2.onem2m.uplus.co.kr`) | `LOCAL_SERVER_IP:18832` | Device TLS MQTT |
+| `61.34.165.80:443` (`hdslog.lguplus.co.kr`) | `LOCAL_SERVER_IP:19443` | QMS diagnostic log receiver and success response |
 
 You do not need to assign a fixed IP to each power strip or create per-device DNAT rules. However, other LG U+ IoT devices on the same network that use these destination IP addresses may also be affected.
 
