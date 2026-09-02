@@ -452,6 +452,7 @@ If the log contains `missing certificate files`, verify the files and mount path
 - Corrected `meter_00` as a cumulative energy meter instead of daily usage
 - Renamed the dashboard value from `Today` to `Meter`
 - Renamed the Home Assistant sensor to `sensor.mttl_<MAC7>_meter` with display name `Meter`
+- Automatically migrate existing energy files to `meter_raw`, `meter_kwh`, and `updated_at`
 
 ### `20260901`
 

@@ -14,7 +14,24 @@ class FileStore:
         self._last_log_cleanup = None
         for name in ("devices", "state", "energy", "firmware", "logs"):
             (self.root / name).mkdir(parents=True, exist_ok=True)
+        self._migrate_energy_files()
         self._import_latest_firmware()
+
+    def _migrate_energy_files(self):
+        for path in (self.root / "energy").glob("*.json"):
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            migrated = {
+                "meter_raw": value.get("meter_raw", value.get("today_raw")),
+                "meter_kwh": value.get("meter_kwh", value.get("today_kwh")),
+                "updated_at": value.get("updated_at"),
+            }
+            migrated = {key: item for key, item in migrated.items() if item is not None}
+            if migrated != value:
+                with self.lock:
+                    self._write(path, migrated)
 
     def _import_latest_firmware(self):
         try:

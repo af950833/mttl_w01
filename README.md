@@ -452,6 +452,7 @@ curl http://127.0.0.1:18833/api/health
 - `meter_00`을 일일 사용량이 아닌 누적 전력량으로 정정
 - 대시보드 표시를 `Today`에서 `Meter`로 변경
 - Home Assistant 센서를 `sensor.mttl_<MAC7>_meter` 및 표시 이름 `Meter`로 변경
+- 기존 전력량 파일을 `meter_raw`, `meter_kwh`, `updated_at` 구조로 자동 이전
 
 ### `20260901`
 

@@ -574,14 +574,9 @@ class MQTTServer:
     def _energy(self, session, item):
         now = datetime.now().astimezone()
         energy = self.store.read("energy", session.mac, {})
-        if energy.get("month") != f"{now:%Y-%m}":
-            energy = {"month": f"{now:%Y-%m}", "month_estimated": 0.0}
         energy.update({
-            "date": f"{now:%Y-%m-%d}",
             "meter_raw": item.get("meter_00"),
-            "yesterday_raw": item.get("premeter_00"),
             "meter_kwh": self._kilowatt_hours(item.get("meter_00")),
-            "yesterday_kwh": self._kilowatt_hours(item.get("premeter_00")),
             "updated_at": now.isoformat(),
         })
         self.store.write("energy", session.mac, energy)
