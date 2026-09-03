@@ -55,16 +55,29 @@ docker version
 
 If the current user cannot run Docker, prefix the commands with `sudo` or complete the Docker group configuration.
 
-## 2. Clone the repository
+## 2. Use the Docker Hub image
+
+This is the simplest installation method and does not require building the source. The current published image supports the `linux/amd64` platform.
+
+```bash
+docker pull af950833/mttl-w01:latest
+docker tag af950833/mttl-w01:latest mttl-local:latest
+```
+
+Use the versioned tag instead of `latest` to pin a specific release.
+
+```bash
+docker pull af950833/mttl-w01:20260903
+docker tag af950833/mttl-w01:20260903 mttl-local:latest
+```
+
+## 3. Build from the GitHub source
+
+Use this method instead of Docker Hub if you want to inspect or modify the source. **Run either step 2 or step 3, not both.**
 
 ```bash
 git clone https://github.com/af950833/mttl_w01.git
 cd mttl_w01
-```
-
-## 3. Build the Docker image
-
-```bash
 docker build -t mttl-local:latest .
 ```
 
@@ -160,12 +173,26 @@ Replace `192.168.0.0/24` with your actual LAN subnet.
 
 ## 7. Update the server
 
-After the initial installation, back up the persistent data and run the following commands to update the repository and image.
+Before updating, back up `/srv/mttl/data` and `/srv/mttl/certs`. Refresh the image using the same method selected during installation, then run the common update procedure.
+
+### Docker Hub method
+
+```bash
+docker pull af950833/mttl-w01:latest
+docker tag af950833/mttl-w01:latest mttl-local:latest
+```
+
+### GitHub source build method
 
 ```bash
 cd mttl_w01
 git pull
 docker build -t mttl-local:latest .
+```
+
+### Common update procedure
+
+```bash
 sudo test -s /srv/mttl/certs/root-ca.key
 docker run --rm \
   -v /srv/mttl/certs:/certs \
@@ -449,6 +476,7 @@ If the log contains `missing certificate files`, verify the files and mount path
 
 ### `20260903`
 
+- Published `af950833/mttl-w01:latest` and `20260903` AMD64 images on Docker Hub
 - Restricted the Docker build context with an allowlist in preparation for Docker Hub publishing
 - Added QMS receiver port `19443` to the image's exposed ports
 - Added a Docker `HEALTHCHECK` and OCI image metadata

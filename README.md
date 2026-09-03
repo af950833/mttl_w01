@@ -55,16 +55,29 @@ docker version
 
 현재 사용자가 Docker를 실행할 권한이 없다면 명령 앞에 `sudo`를 붙이거나 Docker 그룹 설정을 완료하십시오.
 
-## 2. 저장소 내려받기
+## 2. Docker Hub 이미지 사용
+
+소스를 직접 빌드하지 않고 공개 이미지를 내려받는 가장 간단한 설치 방법입니다. 현재 배포 이미지는 `linux/amd64` 플랫폼을 지원합니다.
+
+```bash
+docker pull af950833/mttl-w01:latest
+docker tag af950833/mttl-w01:latest mttl-local:latest
+```
+
+특정 릴리스를 고정해서 사용하려면 `latest` 대신 버전 태그를 사용할 수 있습니다.
+
+```bash
+docker pull af950833/mttl-w01:20260903
+docker tag af950833/mttl-w01:20260903 mttl-local:latest
+```
+
+## 3. GitHub 소스로 직접 빌드
+
+소스를 확인하거나 수정해서 사용하려면 Docker Hub 방식 대신 아래 명령으로 직접 빌드합니다. **2번과 3번 중 한 가지만 실행하면 됩니다.**
 
 ```bash
 git clone https://github.com/af950833/mttl_w01.git
 cd mttl_w01
-```
-
-## 3. Docker 이미지 빌드
-
-```bash
 docker build -t mttl-local:latest .
 ```
 
@@ -160,12 +173,26 @@ sudo ufw allow from 192.168.0.0/24 to any port 19443 proto tcp
 
 ## 7. 서버 업데이트
 
-최초 설치가 끝난 뒤 새 버전으로 업데이트할 때는 영구 데이터를 먼저 백업하고 저장소와 이미지를 갱신합니다.
+최초 설치가 끝난 뒤 새 버전으로 업데이트할 때는 `/srv/mttl/data`와 `/srv/mttl/certs`를 먼저 백업하십시오. 설치할 때 선택했던 방식에 따라 이미지를 갱신한 뒤 공통 절차를 실행합니다.
+
+### Docker Hub 방식
+
+```bash
+docker pull af950833/mttl-w01:latest
+docker tag af950833/mttl-w01:latest mttl-local:latest
+```
+
+### GitHub 소스 빌드 방식
 
 ```bash
 cd mttl_w01
 git pull
 docker build -t mttl-local:latest .
+```
+
+### 공통 업데이트 절차
+
+```bash
 sudo test -s /srv/mttl/certs/root-ca.key
 docker run --rm \
   -v /srv/mttl/certs:/certs \
@@ -449,6 +476,7 @@ curl http://127.0.0.1:18833/api/health
 
 ### `20260903`
 
+- Docker Hub에 `af950833/mttl-w01:latest` 및 `20260903` AMD64 이미지 공개
 - Docker Hub 배포를 위해 이미지 빌드 컨텍스트를 허용 목록 방식으로 제한
 - QMS 수신 포트 `19443`을 이미지 노출 포트에 추가
 - 컨테이너 상태를 확인하는 Docker `HEALTHCHECK`와 OCI 이미지 정보 추가
