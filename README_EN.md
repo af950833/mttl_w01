@@ -312,7 +312,7 @@ Enable DNAT and verify that the Docker server is running before provisioning.
 
 1. Hold the main button on the power strip for about 10 seconds until the status LED flashes rapidly.
 2. Select **SCAN WI-FI Network** in the app.
-3. Wait for a setup network named `TONLY_TAP_XXXXXXX` to appear.
+3. Repeat the scan slowly until a setup network named `TONLY_TAP_XXXXXXX` appears.
 4. Select the 2.4 GHz network under **Home Wi-Fi SSID**.
 5. Enter its password under **Home Wi-Fi password**.
 6. Select the power strip setup network and press **Provision**.

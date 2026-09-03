@@ -312,7 +312,7 @@ APK를 신뢰하기 어려운 사용자는 제조사 앱을 설치하고 회원�
 
 1. 멀티탭의 메인 버튼을 약 10초 이상 눌러 상태 LED가 빠르게 깜박이게 합니다.
 2. 앱에서 **SCAN WI-FI Network**를 누릅니다.
-3. `TONLY_TAP_XXXXXXX` 형식의 설정 AP가 나타날 때까지 기다립니다.
+3. `TONLY_TAP_XXXXXXX` 형식의 설정 AP가 나타날 때까지 천천히 반복합니다.
 4. **Home Wi-Fi SSID**에서 멀티탭이 사용할 2.4 GHz Wi-Fi를 선택합니다.
 5. **Home Wi-Fi password**에 암호를 입력합니다.
 6. 앱에서 해당 멀티탭 AP를 선택하고 **Provision**을 누릅니다.
