@@ -57,7 +57,7 @@ docker version
 
 ## 2. Docker Hub 이미지 사용
 
-소스를 직접 빌드하지 않고 공개 이미지를 내려받는 가장 간단한 설치 방법입니다. 현재 배포 이미지는 `linux/amd64` 플랫폼을 지원합니다.
+소스를 직접 빌드하지 않고 공개 이미지를 내려받는 가장 간단한 설치 방법입니다. 현재 배포 이미지는 `linux/amd64` 플랫폼을 지원합니다. ([Docker Hub](https://hub.docker.com/r/af950833/mttl-w01))
 
 ```bash
 docker pull af950833/mttl-w01:latest

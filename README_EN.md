@@ -57,7 +57,7 @@ If the current user cannot run Docker, prefix the commands with `sudo` or comple
 
 ## 2. Use the Docker Hub image
 
-This is the simplest installation method and does not require building the source. The current published image supports the `linux/amd64` platform.
+This is the simplest installation method and does not require building the source. The current published image supports the `linux/amd64` platform. ([Docker Hub](https://hub.docker.com/r/af950833/mttl-w01))
 
 ```bash
 docker pull af950833/mttl-w01:latest
