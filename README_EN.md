@@ -441,11 +441,18 @@ If the log contains `missing certificate files`, verify the files and mount path
 
 | Component | Version |
 | --- | --- |
-| Local server and web dashboard | `20260902` |
+| Local server and web dashboard | `20260903` |
 | Android Provisioner | `0.3.2` (`versionCode 14`) |
 | Bundled MTTL-W01 firmware | `1.0.66` |
 
 ## Version history
+
+### `20260903`
+
+- Restricted the Docker build context with an allowlist in preparation for Docker Hub publishing
+- Added QMS receiver port `19443` to the image's exposed ports
+- Added a Docker `HEALTHCHECK` and OCI image metadata
+- Updated to Paramiko `5.0.0` and cryptography `50.0.1`, with no known dependency vulnerabilities found
 
 ### `20260902`
 
