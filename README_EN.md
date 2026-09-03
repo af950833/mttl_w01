@@ -475,7 +475,7 @@ If the log contains `missing certificate files`, verify the files and mount path
 
 ### `20260903`
 
-- Published `af950833/mttl-w01:latest` and `20260903` AMD64 images on Docker Hub
+- Published the `af950833/mttl-w01:latest` (`20260903`) AMD64 image on Docker Hub
 - Restricted the Docker build context with an allowlist in preparation for Docker Hub publishing
 - Added QMS receiver port `19443` to the image's exposed ports
 - Added a Docker `HEALTHCHECK` and OCI image metadata

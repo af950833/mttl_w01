@@ -475,7 +475,7 @@ curl http://127.0.0.1:18833/api/health
 
 ### `20260903`
 
-- Docker Hub에 `af950833/mttl-w01:latest` 및 `20260903` AMD64 이미지 공개
+- Docker Hub에 `af950833/mttl-w01:latest`(`20260903`) AMD64 이미지 공개
 - Docker Hub 배포를 위해 이미지 빌드 컨텍스트를 허용 목록 방식으로 제한
 - QMS 수신 포트 `19443`을 이미지 노출 포트에 추가
 - 컨테이너 상태를 확인하는 Docker `HEALTHCHECK`와 OCI 이미지 정보 추가
