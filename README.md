@@ -61,15 +61,15 @@ docker version
 
 ```bash
 docker pull af950833/mttl-w01:latest
-docker tag af950833/mttl-w01:latest mttl-local:latest
 ```
 
 특정 릴리스를 고정해서 사용하려면 `latest` 대신 버전 태그를 사용할 수 있습니다.
 
 ```bash
 docker pull af950833/mttl-w01:20260903
-docker tag af950833/mttl-w01:20260903 mttl-local:latest
 ```
+
+고정 버전을 사용한다면 이후 명령의 `af950833/mttl-w01:latest`를 `af950833/mttl-w01:20260903`으로 바꾸십시오.
 
 ## 3. GitHub 소스로 직접 빌드
 
@@ -78,7 +78,7 @@ docker tag af950833/mttl-w01:20260903 mttl-local:latest
 ```bash
 git clone https://github.com/af950833/mttl_w01.git
 cd mttl_w01
-docker build -t mttl-local:latest .
+docker build -t af950833/mttl-w01:latest .
 ```
 
 이미지에는 서버, 웹 대시보드, Android APK 및 MTTL-W01 정식 `1.0.66` 펌웨어가 포함됩니다.
@@ -101,7 +101,7 @@ sudo chown -R 10001:10001 /srv/mttl/data /srv/mttl/certs
 ```bash
 docker run --rm \
   -v /srv/mttl/certs:/certs \
-  mttl-local:latest generate-certs
+  af950833/mttl-w01:latest generate-certs
 ```
 
 생성되는 파일:
@@ -130,7 +130,7 @@ docker run -d \
   --network host \
   -v /srv/mttl/data:/data \
   -v /srv/mttl/certs:/certs:ro \
-  mttl-local:latest
+  af950833/mttl-w01:latest
 ```
 
 실행 상태 확인:
@@ -179,7 +179,6 @@ sudo ufw allow from 192.168.0.0/24 to any port 19443 proto tcp
 
 ```bash
 docker pull af950833/mttl-w01:latest
-docker tag af950833/mttl-w01:latest mttl-local:latest
 ```
 
 ### GitHub 소스 빌드 방식
@@ -187,7 +186,7 @@ docker tag af950833/mttl-w01:latest mttl-local:latest
 ```bash
 cd mttl_w01
 git pull
-docker build -t mttl-local:latest .
+docker build -t af950833/mttl-w01:latest .
 ```
 
 ### 공통 업데이트 절차
@@ -196,7 +195,7 @@ docker build -t mttl-local:latest .
 sudo test -s /srv/mttl/certs/root-ca.key
 docker run --rm \
   -v /srv/mttl/certs:/certs \
-  mttl-local:latest generate-certs
+  af950833/mttl-w01:latest generate-certs
 docker stop mttl-local
 docker rm mttl-local
 docker run -d \
@@ -205,7 +204,7 @@ docker run -d \
   --network host \
   -v /srv/mttl/data:/data \
   -v /srv/mttl/certs:/certs:ro \
-  mttl-local:latest
+  af950833/mttl-w01:latest
 ```
 
 업데이트 시 인증서 생성 명령은 기존 CA와 서버 인증서를 변경하지 않고 필요한 새 인증서만 추가합니다. `root-ca.key` 검사에서 실패하면 진행을 중단하고 인증서 백업을 복원하십시오. 기존 CA 개인키 없이 새 CA를 생성하면 이미 등록된 멀티탭은 새 CA를 신뢰하지 않으므로 초기화 후 재프로비저닝해야 합니다.

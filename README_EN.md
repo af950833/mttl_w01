@@ -61,15 +61,15 @@ This is the simplest installation method and does not require building the sourc
 
 ```bash
 docker pull af950833/mttl-w01:latest
-docker tag af950833/mttl-w01:latest mttl-local:latest
 ```
 
 Use the versioned tag instead of `latest` to pin a specific release.
 
 ```bash
 docker pull af950833/mttl-w01:20260903
-docker tag af950833/mttl-w01:20260903 mttl-local:latest
 ```
+
+When pinning this release, replace `af950833/mttl-w01:latest` with `af950833/mttl-w01:20260903` in the remaining commands.
 
 ## 3. Build from the GitHub source
 
@@ -78,7 +78,7 @@ Use this method instead of Docker Hub if you want to inspect or modify the sourc
 ```bash
 git clone https://github.com/af950833/mttl_w01.git
 cd mttl_w01
-docker build -t mttl-local:latest .
+docker build -t af950833/mttl-w01:latest .
 ```
 
 The image contains the server, web dashboard, Android APK, and official MTTL-W01 `1.0.66` firmware.
@@ -101,7 +101,7 @@ Generate a unique CA and server certificates once for each installation.
 ```bash
 docker run --rm \
   -v /srv/mttl/certs:/certs \
-  mttl-local:latest generate-certs
+  af950833/mttl-w01:latest generate-certs
 ```
 
 Generated files:
@@ -130,7 +130,7 @@ docker run -d \
   --network host \
   -v /srv/mttl/data:/data \
   -v /srv/mttl/certs:/certs:ro \
-  mttl-local:latest
+  af950833/mttl-w01:latest
 ```
 
 Check the service:
@@ -179,7 +179,6 @@ Before updating, back up `/srv/mttl/data` and `/srv/mttl/certs`. Refresh the ima
 
 ```bash
 docker pull af950833/mttl-w01:latest
-docker tag af950833/mttl-w01:latest mttl-local:latest
 ```
 
 ### GitHub source build method
@@ -187,7 +186,7 @@ docker tag af950833/mttl-w01:latest mttl-local:latest
 ```bash
 cd mttl_w01
 git pull
-docker build -t mttl-local:latest .
+docker build -t af950833/mttl-w01:latest .
 ```
 
 ### Common update procedure
@@ -196,7 +195,7 @@ docker build -t mttl-local:latest .
 sudo test -s /srv/mttl/certs/root-ca.key
 docker run --rm \
   -v /srv/mttl/certs:/certs \
-  mttl-local:latest generate-certs
+  af950833/mttl-w01:latest generate-certs
 docker stop mttl-local
 docker rm mttl-local
 docker run -d \
@@ -205,7 +204,7 @@ docker run -d \
   --network host \
   -v /srv/mttl/data:/data \
   -v /srv/mttl/certs:/certs:ro \
-  mttl-local:latest
+  af950833/mttl-w01:latest
 ```
 
 During an update, the certificate command preserves the existing CA and server certificates and adds only newly required certificates. If the `root-ca.key` check fails, stop and restore the certificate backup. Creating a new CA without the existing private key requires resetting and provisioning the devices again because they do not trust the new CA.
