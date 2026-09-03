@@ -385,7 +385,7 @@ See [`ha-card/README.md`](ha-card/README.md) for installation details and option
 
 ## 14. Automatic firmware update
 
-The image includes the unmodified official MTTL-W01 `1.0.66` firmware. When a device reports a version older than `1.0.66` to the local MEF endpoint, the server automatically offers the update. Devices on `1.0.66` or later receive no update offer.
+The image includes the unmodified official MTTL-W01 `1.0.66` firmware. When a device reports a version older than `1.0.66` to the local MEF endpoint, the server automatically performs the update. It does not run for devices on `1.0.66` or later.
 
 ```text
 File:   comMTTL-W01_1.0.66.fwr
