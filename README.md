@@ -399,7 +399,20 @@ SHA256: d780b578af69d52f3a05191a8e7d91a20e05085a912722327481cd5663682c04
 docker logs -f mttl-local
 ```
 
-## 15. 데이터와 백업
+## 15. DNAT 없이 Direct-local 펌웨어 사용
+
+공유기에서 목적지 기반 DNAT를 사용할 수 없다면 대시보드의 **Direct-local F/W Patch** 기능을 사용할 수 있습니다.
+
+1. 카드에 표시된 Local Server IP가 Docker 서버의 고정 IPv4 주소인지 확인합니다. 필요한 경우에만 **Override**를 선택해 직접 입력합니다.
+2. **Enable & Build**를 누릅니다. 서버는 기존 Root CA를 유지하면서 현재 IP가 SAN에 포함된 MEF·MQTT·QMS 인증서를 다시 발급하고, 같은 IP를 사용하는 `comMTTL-W01_1.0.67.fwr`를 생성합니다.
+3. 생성된 패치 펌웨어를 내려받습니다.
+4. 카드에 연결된 [OTA Tool (ttaengz's GitHub)](https://github.com/ttaengz/mttl-w01-matterbridge)을 이용해 멀티탭에 한 번 설치합니다.
+
+패치 펌웨어는 Certificate `18080`, MEF `18443`, MQTT `18832`, QMS `19443` 포트로 Docker 서버에 직접 연결하므로 공유기 DNAT가 필요하지 않습니다. **Disable**하면 DNAT로 연결된 기기의 OTA 요청에 순정 `1.0.66`을 제공하지만, 이미 Direct-local 펌웨어가 설치된 기기는 서버 IP로 직접 연결하므로 순정 복원에도 OTA Tool 또는 임시 DNAT 구성이 필요할 수 있습니다.
+
+서버 IP가 변경되면 **Enable & Build**를 다시 실행하고 새로 생성된 패치 펌웨어를 기기에 다시 설치하십시오. 서버 주소는 DHCP 고정 할당을 권장합니다.
+
+## 16. 데이터와 백업
 
 별도 DB 없이 영구 데이터는 `/srv/mttl/data`에 저장됩니다.
 
@@ -418,7 +431,7 @@ docker logs -f mttl-local
 
 인증서 디렉터리를 잃어버리면 기존 CA를 신뢰하도록 등록된 멀티탭을 초기화하고 다시 프로비저닝해야 할 수 있습니다.
 
-## 16. 문제 해결
+## 17. 문제 해결
 
 ### 대시보드가 열리지 않을 때
 
@@ -467,11 +480,20 @@ curl http://127.0.0.1:18833/api/health
 
 | 구성 요소 | 버전 |
 | --- | --- |
-| 로컬 서버 및 웹 대시보드 | `20260903` |
+| 로컬 서버 및 웹 대시보드 | `20260909` |
 | Android Provisioner | `0.3.2` (`versionCode 14`) |
 | 내장 MTTL-W01 펌웨어 | `1.0.66` |
 
 ## Version history
+
+### `20260909`
+
+- 공유기 DNAT 없이 로컬 서버에 직접 연결하는 `1.0.67` 펌웨어 생성 기능 추가
+- 현재 서버 IP를 자동 감지하고 예외 환경을 위한 Override 옵션 추가
+- 기존 Root CA를 유지하면서 현재 서버 IP가 포함된 MEF·MQTT·QMS 인증서를 재발급하고 실행 중인 TLS 서비스에 자동 반영
+- 패치 활성화 시 `1.0.67`, 비활성화 시 순정 `1.0.66` OTA 응답 지원
+- Windows 및 macOS용 OTA Tool 다운로드 링크 추가
+- OTA 버전 확인·다운로드 응답과 오프라인 RSSI 표시 개선
 
 ### `20260903`
 

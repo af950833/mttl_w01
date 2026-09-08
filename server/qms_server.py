@@ -16,6 +16,7 @@ class QMSServer:
         self.cert_dir = Path(cert_dir)
         self.server = None
         self.thread = None
+        self.context = None
 
     def start(self):
         owner = self
@@ -33,12 +34,18 @@ class QMSServer:
                 return
 
         self.server = ThreadingHTTPServer((self.host, self.port), Handler)
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        context.minimum_version = ssl.TLSVersion.TLSv1_2
-        context.load_cert_chain(self.cert_dir / "qms.crt", self.cert_dir / "qms.key")
-        self.server.socket = context.wrap_socket(self.server.socket, server_side=True)
+        self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        self.context.minimum_version = ssl.TLSVersion.TLSv1_2
+        self.reload_certificates()
+        self.server.socket = self.context.wrap_socket(self.server.socket, server_side=True)
         self.thread = threading.Thread(target=self.server.serve_forever, name="qms-server", daemon=True)
         self.thread.start()
+
+    def reload_certificates(self):
+        """Reload the certificate for future TLS handshakes."""
+        if self.context is None:
+            return
+        self.context.load_cert_chain(self.cert_dir / "qms.crt", self.cert_dir / "qms.key")
 
     def stop(self):
         if self.server:

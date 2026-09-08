@@ -14,6 +14,8 @@ from .mqtt_server import MQTTServer
 from .dnat import DNATError, DNATManager
 from .ha_mqtt import HAMQTTBridge
 from .qms_server import QMSServer
+from .firmware_patch import FirmwarePatchError, FirmwarePatchManager
+from .certificates import generate_local_endpoint_certificates
 
 
 DATA_DIR = Path(os.getenv("MTTL_DATA_DIR", "/data"))
@@ -24,6 +26,9 @@ DNAT = DNATManager(DATA_DIR)
 MQTT = None
 HA = None
 QMS = None
+LEGACY_PROCESSES = []
+TLS_RELOAD_LOCK = threading.Lock()
+FIRMWARE_PATCH = FirmwarePatchManager(DATA_DIR)
 
 
 class EventBroker:
@@ -65,6 +70,33 @@ class WebHandler(BaseHTTPRequestHandler):
         if self.path == "/api/health":
             body = json.dumps({"status": "ok"}).encode()
             return self.send_bytes(body, "application/json")
+        if self.path == "/api/firmware-patch":
+            state = FIRMWARE_PATCH.status()
+            state["local_server_ip"] = DNAT.public_config().get("server_ip", "")
+            return self.send_bytes(json.dumps(state).encode(), "application/json")
+        if self.path == "/api/firmware-patch/original":
+            body = FIRMWARE_PATCH.source.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Disposition", 'attachment; filename="comMTTL-W01_1.0.66.fwr"')
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path == "/api/firmware-patch/download":
+            state = FIRMWARE_PATCH.status()
+            if not state["enabled"] or not state["ready"]:
+                return self.send_bytes(b'{"error":"patched firmware is not enabled or ready"}', "application/json", 404)
+            body = FIRMWARE_PATCH.output.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Disposition", f'attachment; filename="{state["filename"]}"')
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path == "/api/dnat/config":
             return self.send_bytes(json.dumps(DNAT.public_config()).encode(), "application/json")
         if self.path == "/api/dnat/status":
@@ -118,6 +150,24 @@ class WebHandler(BaseHTTPRequestHandler):
             return
 
     def do_POST(self):
+        if self.path == "/api/firmware-patch":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                value = json.loads(self.rfile.read(length) or b"{}")
+                enabled = bool(value.get("enabled"))
+                server_ip = value.get("server_ip", "")
+                if enabled and not server_ip:
+                    server_ip = DNAT.public_config().get("server_ip", "")
+                if enabled and not server_ip:
+                    raise ValueError("could not determine the Local Server IP")
+                state = FIRMWARE_PATCH.configure(enabled, server_ip)
+                if enabled:
+                    generate_local_endpoint_certificates(os.getenv("MTTL_CERT_DIR", "/certs"), state["server_ip"])
+                    reload_tls_services()
+                    state["services_reloaded"] = True
+                return self.send_bytes(json.dumps(state).encode(), "application/json")
+            except (ValueError, json.JSONDecodeError, OSError, FirmwarePatchError) as error:
+                return self.send_bytes(json.dumps({"error": str(error)}).encode(), "application/json", 400)
         if self.path == "/api/dnat/config":
             try:
                 length = int(self.headers.get("Content-Length", "0"))
@@ -199,21 +249,39 @@ def run_legacy_services():
         "MTTL_ROOT_CA": os.path.join(os.getenv("MTTL_CERT_DIR", "/certs"), "root-ca.crt"),
     }
     (DATA_DIR / "enable-local-auth").touch(exist_ok=True)
-    processes = [
-        subprocess.Popen(["python", f"/app/legacy/{name}"], env=environment)
-        for name in ("mttl_cert_server.py", "mttl_mef_proxy.py")
-    ]
+    processes = []
+    processes.append(subprocess.Popen(["python", "/app/legacy/mttl_cert_server.py"], env=environment))
+    processes.append(subprocess.Popen(["python", "/app/legacy/mttl_mef_proxy.py"], env=environment))
     return processes
 
 
+def reload_tls_services():
+    """Apply replaced leaf certificates without restarting the container."""
+    global LEGACY_PROCESSES
+    with TLS_RELOAD_LOCK:
+        # These SSLContext objects are shared by their listeners; reloading the
+        # chain changes future handshakes while preserving active MQTT sessions.
+        MQTT.reload_certificates()
+        QMS.reload_certificates()
+        for process in LEGACY_PROCESSES:
+            process.terminate()
+        for process in LEGACY_PROCESSES:
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=2)
+        LEGACY_PROCESSES = run_legacy_services()
+
+
 def main():
-    global MQTT, HA, QMS
+    global MQTT, HA, QMS, LEGACY_PROCESSES
     cert_dir = Path(os.getenv("MTTL_CERT_DIR", "/certs"))
     required = ("root-ca.crt", "root-ca.key", "mef.crt", "mef.key", "brk2.crt", "brk2.key", "qms.crt", "qms.key")
     missing = [name for name in required if not (cert_dir / name).is_file()]
     if missing:
         raise SystemExit(f"missing certificate files in {cert_dir}: {', '.join(missing)}")
-    processes = run_legacy_services()
+    LEGACY_PROCESSES = run_legacy_services()
     MQTT = MQTTServer(
         STORE,
         REGISTRY,
@@ -241,7 +309,7 @@ def main():
 
     def stop(*_):
         QMS.stop()
-        for process in processes:
+        for process in LEGACY_PROCESSES:
             process.terminate()
         raise SystemExit(0)
 

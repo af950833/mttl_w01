@@ -399,7 +399,20 @@ Do not disconnect power while an update is in progress. The device may reboot mo
 docker logs -f mttl-local
 ```
 
-## 15. Data and backups
+## 15. Use Direct-local firmware without DNAT
+
+If destination-based DNAT is unavailable on the router, use the **Direct-local F/W Patch** card on the dashboard.
+
+1. Confirm that Local Server IP is the fixed IPv4 address of the Docker host. Select **Override** only when you need to enter a different address.
+2. Select **Enable & Build**. The server preserves the existing root CA, reissues the MEF, MQTT, and QMS certificates with the current IP in their SANs, and builds `comMTTL-W01_1.0.67.fwr` for the same address.
+3. Download the generated patched firmware.
+4. Install it once on the power strip with the [OTA Tool (ttaengz's GitHub)](https://github.com/ttaengz/mttl-w01-matterbridge) linked from the card.
+
+The patched firmware connects directly to the Docker host on Certificate `18080`, MEF `18443`, MQTT `18832`, and QMS `19443`, so router DNAT is not required. Selecting **Disable** makes the OTA endpoint offer the original `1.0.66` firmware to devices connected through DNAT. A device already running Direct-local firmware connects straight to the configured server IP, so restoring it may still require the OTA Tool or a temporary DNAT configuration.
+
+If the server IP changes, run **Enable & Build** again and install the newly generated firmware on each device. A DHCP reservation for the server is strongly recommended.
+
+## 16. Data and backups
 
 The server does not use a database. Persistent data is stored under `/srv/mttl/data`.
 
@@ -418,7 +431,7 @@ Back up both directories:
 
 If the certificate directory is lost, devices that trust the previous CA may need to be reset and provisioned again.
 
-## 16. Troubleshooting
+## 17. Troubleshooting
 
 ### The dashboard does not open
 
@@ -467,11 +480,20 @@ If the log contains `missing certificate files`, verify the files and mount path
 
 | Component | Version |
 | --- | --- |
-| Local server and web dashboard | `20260903` |
+| Local server and web dashboard | `20260909` |
 | Android Provisioner | `0.3.2` (`versionCode 14`) |
 | Bundled MTTL-W01 firmware | `1.0.66` |
 
 ## Version history
+
+### `20260909`
+
+- Added generation of Direct-local `1.0.67` firmware that connects without router DNAT
+- Added automatic local-server IP detection with an Override option for exceptional environments
+- Preserved the existing root CA while reissuing MEF, MQTT, and QMS certificates for the current server IP and reloading live TLS services
+- Added OTA responses for patched `1.0.67` while enabled and original `1.0.66` while disabled
+- Added Windows and macOS OTA Tool download links
+- Improved OTA version-check/download responses and offline RSSI presentation
 
 ### `20260903`
 

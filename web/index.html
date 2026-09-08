@@ -8,7 +8,9 @@
   <style>
     .card-tools{justify-content:space-between;align-items:center}
     header .header-tools{flex-direction:column;align-items:flex-end;gap:3px}.server-version{color:#cbd5e1;font-size:12px}
-    .top-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:24px 5vw 0}
+    .setup-grid,.top-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:24px 5vw 0}
+    .setup-grid .app-download,.setup-grid .firmware-patch{margin:0}
+    .firmware-patch{background:white;border-radius:18px;padding:20px;box-shadow:0 8px 30px #14213d18}.firmware-controls{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-top:10px}.firmware-patch-row{display:flex;gap:10px;align-items:center}.firmware-ip{display:grid;gap:5px;width:240px;max-width:100%;margin:0;color:#64748b;font-size:13px}.field-caption{display:flex;align-items:center;gap:5px}.inline-override{display:inline-flex;align-items:center;gap:3px;color:#64748b;font-size:12px;white-space:nowrap}.inline-override input{appearance:auto;width:auto!important;margin:0;padding:0!important;border:0!important}.firmware-ip>input{box-sizing:border-box;width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px}.firmware-ip>input[readonly],#serverIp[readonly]{background:#f1f5f9;color:#475569}.firmware-downloads{display:grid;gap:9px;margin:14px 0}.firmware-downloads .app-download-button{width:max-content}.app-download-button.disabled{background:#94a3b8;cursor:not-allowed;pointer-events:none}.firmware-meta{margin-top:10px;color:#64748b;font-size:13px;line-height:1.5}.firmware-meta.ok{color:#059669}.firmware-meta.bad{color:#dc2626}.softap-note{color:#64748b;font-size:13px;line-height:1.5}.softap-note a,.softap-downloads a{color:#2563eb}.softap-downloads{display:flex;gap:16px;margin-top:5px;flex-wrap:wrap}
     .top-grid .router,.top-grid .ha-mqtt{margin:0}
     .ha-mqtt{background:white;border-radius:18px;padding:20px;box-shadow:0 8px 30px #14213d18}
     .ha-mqtt .settings{grid-template-columns:minmax(130px,1.5fr) 76px minmax(110px,1fr) minmax(150px,1.4fr)}.ha-mqtt .settings label{min-width:0}.ha-mqtt .settings input{box-sizing:border-box;width:100%;min-width:0}.ha-mqtt .settings .prefix-field{grid-column:span 2}.ha-status-details{display:grid;gap:4px;margin-top:12px;color:#64748b;font-size:13px}
@@ -16,16 +18,36 @@
     .device-heading{display:grid;gap:2px;min-width:0}.device-heading .name-row{min-width:0}
     .ha-link{display:flex;align-items:center;gap:8px;color:#64748b;font-size:13px}
     .toggle{position:relative;width:42px;height:24px;display:inline-block}.toggle input{opacity:0;width:0;height:0}.slider{position:absolute;inset:0;background:#cbd5e1;border-radius:24px;cursor:pointer;transition:.2s}.slider:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:white;border-radius:50%;transition:.2s}.toggle input:checked+.slider{background:#22c55e}.toggle input:checked+.slider:before{transform:translateX(18px)}
-    @media(max-width:1100px){.ha-mqtt .settings{grid-template-columns:minmax(0,1fr) 90px}.ha-mqtt .settings .prefix-field{grid-column:span 1}.ha-mqtt .settings .credential-field{grid-column:span 2}}@media(max-width:900px){.top-grid{grid-template-columns:1fr}}
+    @media(max-width:1100px){.ha-mqtt .settings{grid-template-columns:minmax(0,1fr) 90px}.ha-mqtt .settings .prefix-field{grid-column:span 1}.ha-mqtt .settings .credential-field{grid-column:span 2}}@media(max-width:900px){.setup-grid,.top-grid{grid-template-columns:1fr}}@media(max-width:520px){.firmware-controls{align-items:flex-start;flex-direction:column}.firmware-ip{width:100%}}
     @media(min-width:1601px){main{grid-template-columns:repeat(4,minmax(0,1fr))}}
   </style>
 </head>
 <body>
-  <header><h1>MTTL-W01</h1><div class="header-tools"><span id="health">Connecting</span><small class="server-version">Ver : 20260903</small></div></header>
+  <header><h1>MTTL-W01</h1><div class="header-tools"><span id="health">Connecting</span><small class="server-version">Ver : 20260909</small></div></header>
+  <div class="setup-grid">
   <section class="app-download">
     <div><h2>Android Provisioning App</h2><p>Scan on a phone connected to this LAN, or use the direct download link.</p><a class="app-download-button" href="/downloads/MTTL-W01-Provisioner.apk" download>Download MTTL-W01 Provisioner</a></div>
     <a href="/downloads/MTTL-W01-Provisioner.apk" aria-label="Download Android provisioning app"><img src="/downloads/MTTL-W01-Provisioner-QR.png" alt="QR code for MTTL-W01 Provisioner APK download"></a>
   </section>
+  <section class="firmware-patch">
+    <div class="title"><h2>Direct-local F/W Patch</h2><span id="fwPatchState" class="badge">Checking</span></div>
+    <div class="firmware-controls">
+      <div class="firmware-patch-row">
+        <button onclick="setFirmwarePatch(true)">Enable &amp; Build</button>
+        <button onclick="setFirmwarePatch(false)">Disable</button>
+      </div>
+      <label class="firmware-ip"><span class="field-caption">Local Server IP <span class="inline-override">(Override <input id="fwServerIpOverride" type="checkbox" onchange="setServerIpOverride(this.checked)">)</span></span><input id="fwServerIp" readonly oninput="syncServerIp(this.value)"></label>
+    </div>
+    <div id="fwPatchMeta" class="firmware-meta">Checking firmware status.</div>
+    <div class="firmware-downloads">
+      <a class="app-download-button" href="/api/firmware-patch/original" download>Download comMTTL-W01_1.0.66.fwr (LG U+ original F/W)</a>
+      <a id="fwPatchDownload" class="app-download-button disabled" aria-disabled="true">Download comMTTL-W01_1.0.67.fwr (Local patched F/W)</a>
+    </div>
+    <div class="softap-note">If DNAT is unavailable, install the patched firmware once with the OTA Tool (<a href="https://github.com/ttaengz/mttl-w01-matterbridge" target="_blank" rel="noopener noreferrer">ttaengz's GitHub</a>).
+      <div class="softap-downloads"><a href="https://github.com/ttaengz/mttl-w01-matterbridge/raw/refs/heads/main/tools/ota_gui_windows.exe">Download for Windows</a><a href="https://github.com/ttaengz/mttl-w01-matterbridge/raw/refs/heads/main/tools/ota_gui_macos.zip">Download for macOS</a></div>
+    </div>
+  </section>
+  </div>
   <div class="top-grid">
   <section class="router">
     <div class="title"><h2>ASUS Router DNAT</h2><span id="dnatState" class="badge">Checking</span></div>
@@ -33,7 +55,7 @@
       <label>Router IP<input id="routerHost" placeholder="192.168.0.1"></label>
       <label>SSH Username<input id="routerUser"></label>
       <label>SSH Password<input id="routerPassword" type="password" placeholder="Enter only to change"></label>
-      <label>Local Server IP<input id="serverIp" placeholder="192.168.0.4"></label>
+      <label><span class="field-caption">Local Server IP <span class="inline-override">(Override <input id="serverIpOverride" type="checkbox" onchange="setServerIpOverride(this.checked)">)</span></span><input id="serverIp" readonly oninput="syncServerIp(this.value)"></label>
     </div>
     <div class="bulk"><button onclick="saveDnat()">Save Settings</button><button onclick="dnatAction('test')">Test Connection</button><button onclick="dnatAction('enable')">Enable DNAT</button><button onclick="dnatAction('disable')">Disable DNAT</button></div>
     <div id="dnatDetails" class="dnat-details"><span>Certificate: Checking</span><span>MEF: Checking</span><span>MQTT: Checking</span><span>QMS: Checking</span></div>
@@ -67,7 +89,7 @@
         document.querySelector('#devices').innerHTML = devices.map(d => `
           <article class="card">
             <div class="title"><div class="device-heading"><div class="name-row"><h2>${esc(d.name)}</h2><button class="icon-button" title="Edit device name" onclick="editDeviceName('${d.mac}')">✎</button></div><span class="fw-version">(FW Ver : ${esc(d.firmware?.version ?? 'Unknown')})</span></div><span class="dot ${d.state?.online?'on':''}"></span></div>
-            <dl><dt>Current Power</dt><dd>${esc(d.state?.power_w ?? '0')} W</dd><dt>Meter</dt><dd>${(d.energy?.meter_kwh ?? d.energy?.today_kwh) == null ? '—' : `${esc(d.energy?.meter_kwh ?? d.energy?.today_kwh)} kWh`}</dd><dt>RSSI</dt><dd>${esc(d.state?.rssi ?? '-')} dBm</dd></dl>
+            <dl><dt>Current Power</dt><dd>${esc(d.state?.power_w ?? '0')} W</dd><dt>Meter</dt><dd>${(d.energy?.meter_kwh ?? d.energy?.today_kwh) == null ? '—' : `${esc(d.energy?.meter_kwh ?? d.energy?.today_kwh)} kWh`}</dd><dt>RSSI</dt><dd>${d.state?.online ? `${esc(d.state?.rssi ?? '-')} dBm` : '- dBm'}</dd></dl>
             <div class="bulk"><button onclick="control('${d.mac}','main/on')">All ON</button><button onclick="control('${d.mac}','main/off')">All OFF</button><button onclick="control('${d.mac}','refresh')">Refresh</button></div>
             <div class="outlets">${[1,2,3,4].map((n,i)=>`<div><button class="icon-button" title="Edit channel name" onclick="editChannelName('${d.mac}',${i})">✎</button><b>${esc(d.channels?.[i] ?? n)}</b><span>${esc(d.state?.channels?.[i]?.power_w ?? '0')} W</span><button class="${d.state?.channels?.[i]?.on?'active':''}" onclick="control('${d.mac}','channels/${n}/${d.state?.channels?.[i]?.on?'off':'on'}')">${d.state?.channels?.[i]?.on?'ON':'OFF'}</button></div>`).join('')}</div>
             <div class="card-tools"><label class="ha-link">HA Link <span class="toggle"><input type="checkbox" ${d.ha_link?'checked':''} onchange="setHaLink('${d.mac}',this.checked)"><span class="slider"></span></span></label><button class="danger" onclick="deleteDevice('${d.mac}')">Delete Device</button></div>
@@ -89,9 +111,14 @@
     }
     async function refreshDnat() {
       const config = await fetch('/api/dnat/config').then(r=>r.json());
+      serverIp.dataset.detected=config.detected_server_ip||config.server_ip||'';
       if (config.configured && !routerHost.value) {
-        routerHost.value=config.router.host; routerUser.value=config.router.username; serverIp.value=config.server_ip;
+        routerHost.value=config.router.host; routerUser.value=config.router.username;
       }
+      if(!serverIpOverride.dataset.initialized){setServerIpOverride(Boolean(config.manual_override));serverIpOverride.dataset.initialized='true'}
+      if(!serverIpOverride.checked)serverIp.value=serverIp.dataset.detected;
+      else if(!serverIp.value)serverIp.value=config.server_ip;
+      fwServerIp.value=serverIp.value;
       if (!config.configured) { dnatState.textContent='Setup Required'; return; }
       const response=await fetch('/api/dnat/status'); const state=await response.json();
       dnatState.textContent=state.state==='on'?'Enabled':state.state==='off'?'Disabled':state.state==='partial'?'Partially Enabled':`Error: ${state.error||''}`;
@@ -100,10 +127,36 @@
       dnatDetails.innerHTML=(state.rules||[false,false,false,false]).map((on,i)=>`<span class="${on?'ok':'bad'}">${labels[i]}: ${on?'Enabled':'Disabled'}</span>`).join('');
     }
     async function saveDnat() {
-      const body={server_ip:serverIp.value,router:{host:routerHost.value,port:22,username:routerUser.value,password:routerPassword.value}};
+      const body={server_ip:serverIp.value,manual_override:serverIpOverride.checked,router:{host:routerHost.value,port:22,username:routerUser.value,password:routerPassword.value}};
       const response=await fetch('/api/dnat/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       const value=await response.json(); if(!response.ok) return alert(value.error||'Save failed');
-      routerPassword.value=''; await refreshDnat();
+      routerPassword.value='';setServerIpOverride(Boolean(value.manual_override));await refreshDnat();
+    }
+    function setServerIpOverride(enabled){serverIpOverride.checked=enabled;fwServerIpOverride.checked=enabled;serverIp.readOnly=!enabled;fwServerIp.readOnly=!enabled;if(!enabled)syncServerIp(serverIp.dataset.detected||'')}
+    function syncServerIp(value){serverIp.value=value;fwServerIp.value=value}
+    async function refreshFirmwarePatch() {
+      try {
+        const state=await fetch('/api/firmware-patch').then(r=>r.json());
+        if(!serverIp.value)syncServerIp(state.local_server_ip||'');
+        fwPatchState.textContent=state.enabled?(state.ready?'Enabled':'Build Error'):'Disabled';
+        fwPatchState.className=`badge ${state.enabled&&state.ready?'on':''}`;
+        fwPatchMeta.className=`firmware-meta ${state.ready?'ok':''}`;
+        fwPatchMeta.innerHTML=state.ready?`FW 1.0.67 · Server ${esc(state.server_ip)} · Cert ${esc(state.certificate_port)} · MEF ${esc(state.mef_port)} · MQTT ${esc(state.mqtt_port)} · QMS ${esc(state.qms_port)}<br>SHA-256 ${esc(state.sha256)}`:'No patched firmware has been prepared.';
+        const downloadable=state.enabled&&state.ready;
+        fwPatchDownload.classList.toggle('disabled',!downloadable);
+        fwPatchDownload.setAttribute('aria-disabled',downloadable?'false':'true');
+        if(downloadable)fwPatchDownload.href='/api/firmware-patch/download';else fwPatchDownload.removeAttribute('href');
+      } catch(error) {
+        fwPatchState.textContent='Error';fwPatchMeta.className='firmware-meta bad';fwPatchMeta.textContent=String(error);
+      }
+    }
+    async function setFirmwarePatch(enabled) {
+      const message=enabled?'Build firmware for this server IP? The existing root CA will be preserved.':'Disable patched firmware download?';
+      if(!confirm(message))return;
+      const response=await fetch('/api/firmware-patch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled,server_ip:fwServerIp.value})});
+      const value=await response.json();if(!response.ok)return alert(value.error||'Firmware patch failed');
+      await refreshFirmwarePatch();
+      if(value.services_reloaded)alert('F/W patch enabled. TLS services reloaded successfully.');
     }
     function showHAStatus(config) {
       haPassword.placeholder=config.has_password?'Saved — enter only to change':'Enter password';
@@ -167,7 +220,7 @@
       clearTimeout(eventRefreshTimer);
       eventRefreshTimer=setTimeout(refresh,50);
     });
-    refresh(); refreshDnat(); loadHAConfig(); setInterval(refresh, 30000); setInterval(refreshDnat, 15000); setInterval(refreshHA, 5000);
+    refresh(); refreshDnat(); refreshFirmwarePatch(); loadHAConfig(); setInterval(refresh, 30000); setInterval(refreshDnat, 15000); setInterval(refreshHA, 5000);
   </script>
 </body>
 </html>

@@ -180,6 +180,14 @@ class MQTTServer:
         self.context.maximum_version = ssl.TLSVersion.TLSv1_2
         self.context.set_ciphers("AES256-SHA256:AES128-SHA256:@SECLEVEL=0")
         self.context.load_cert_chain(os.path.join(cert_dir, "brk2.crt"), os.path.join(cert_dir, "brk2.key"))
+        self.cert_dir = cert_dir
+
+    def reload_certificates(self):
+        """Reload the certificate for future TLS handshakes without dropping sessions."""
+        self.context.load_cert_chain(
+            os.path.join(self.cert_dir, "brk2.crt"),
+            os.path.join(self.cert_dir, "brk2.key"),
+        )
 
     def start(self):
         for device in self.store.list_devices():

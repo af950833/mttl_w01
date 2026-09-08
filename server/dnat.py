@@ -2,6 +2,7 @@ import ipaddress
 import json
 import os
 import shlex
+import socket
 import threading
 from pathlib import Path
 
@@ -31,11 +32,16 @@ class DNATManager:
     def public_config(self):
         config = self._load(required=False)
         if not config:
-            return {"configured": False, "server_ip": "", "router": {"host": "", "port": 22, "username": "", "password_set": False}}
+            detected = self.detect_server_ip()
+            return {"configured": False, "server_ip": detected, "detected_server_ip": detected, "manual_override": False, "router": {"host": "", "port": 22, "username": "", "password_set": False}}
         router = config["router"]
+        detected = self.detect_server_ip()
+        manual_override = bool(config.get("manual_override", False))
         return {
             "configured": True,
-            "server_ip": config["server_ip"],
+            "server_ip": config["server_ip"] if manual_override else detected,
+            "detected_server_ip": detected,
+            "manual_override": manual_override,
             "router": {
                 "host": router["host"],
                 "port": router["port"],
@@ -50,7 +56,8 @@ class DNATManager:
         router = value.get("router", {})
         password = router.get("password") or old_router.get("password")
         config = {
-            "server_ip": self._ip(value.get("server_ip")),
+            "server_ip": self._ip(value.get("server_ip") or self.detect_server_ip()),
+            "manual_override": bool(value.get("manual_override", False)),
             "router": {
                 "host": self._ip(router.get("host")),
                 "port": int(router.get("port", 22)),
@@ -67,6 +74,18 @@ class DNATManager:
         os.chmod(temporary, 0o600)
         os.replace(temporary, self.path)
         return self.public_config()
+
+    @staticmethod
+    def detect_server_ip():
+        """Return the host IPv4 selected by the kernel's default LAN route."""
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.connect(("1.1.1.1", 53))
+            return str(ipaddress.IPv4Address(sock.getsockname()[0]))
+        except OSError as error:
+            raise DNATError("could not automatically detect the local server IPv4 address") from error
+        finally:
+            sock.close()
 
     def test(self):
         with self._client() as client:
@@ -131,6 +150,8 @@ class DNATManager:
         # Accept the existing Rethink/Purethink router file as an import source.
         if "server_ip" not in value and value.get("router", {}).get("rethinkIp"):
             value["server_ip"] = value["router"]["rethinkIp"]
+        if not value.get("manual_override", False):
+            value["server_ip"] = self.detect_server_ip()
         return value
 
     @staticmethod

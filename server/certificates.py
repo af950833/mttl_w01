@@ -1,4 +1,5 @@
 import os
+import ipaddress
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -42,7 +43,7 @@ def _certificate_bytes(certificate):
     return certificate.public_bytes(serialization.Encoding.PEM)
 
 
-def _server_certificate(root_certificate, root_key, hostname):
+def _server_certificate(root_certificate, root_key, hostname, local_ip=None):
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     certificate = (
         x509.CertificateBuilder()
@@ -68,10 +69,36 @@ def _server_certificate(root_certificate, root_key, hostname):
             critical=True,
         )
         .add_extension(x509.ExtendedKeyUsage([x509.oid.ExtendedKeyUsageOID.SERVER_AUTH]), critical=False)
-        .add_extension(x509.SubjectAlternativeName([x509.DNSName(hostname)]), critical=False)
+        .add_extension(
+            x509.SubjectAlternativeName(
+                [x509.DNSName(hostname)]
+                + ([x509.DNSName(local_ip), x509.IPAddress(ipaddress.ip_address(local_ip))] if local_ip else [])
+            ),
+            critical=False,
+        )
         .sign(root_key, hashes.SHA256())
     )
     return key, certificate
+
+
+def generate_local_endpoint_certificates(cert_dir, local_ip):
+    """Reissue only service leaves; keep the provisioned root CA unchanged."""
+    destination = Path(cert_dir)
+    address = str(ipaddress.IPv4Address(local_ip))
+    root_key = serialization.load_pem_private_key((destination / "root-ca.key").read_bytes(), password=None)
+    root_certificate = x509.load_pem_x509_certificate((destination / "root-ca.crt").read_bytes())
+    generated = {}
+    for prefix, hostname in (
+        ("mef", "mef.onem2m.uplus.co.kr"),
+        ("brk2", "brk2.onem2m.uplus.co.kr"),
+        ("qms", "hdslog.lguplus.co.kr"),
+    ):
+        key, certificate = _server_certificate(root_certificate, root_key, hostname, address)
+        generated[f"{prefix}.crt"] = (_certificate_bytes(certificate), 0o644)
+        generated[f"{prefix}.key"] = (_key_bytes(key), 0o600)
+    for name, (content, mode) in generated.items():
+        _write(destination / name, content, mode)
+    return address
 
 
 def generate_qms_certificate(cert_dir):
