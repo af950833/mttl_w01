@@ -436,7 +436,9 @@ See [`ha-card/README.md`](ha-card/README.md) for installation details and option
 
 ## 15. Automatic firmware update
 
-The image includes the unmodified official MTTL-W01 `1.0.66` firmware. When a device reports a version older than `1.0.66` to the local MEF endpoint, the server automatically performs the update. It does not run for devices on `1.0.66` or later.
+The image includes the unmodified official MTTL-W01 `1.0.66` firmware. When **Direct-local F/W Patch** is disabled, the local MEF endpoint offers the original `1.0.66` firmware whenever the device reports a different version.
+
+When the firmware patch is enabled, the OTA target changes to Direct-local `1.0.67`. A `1.0.66` device connected to the local server through DNAT automatically updates to `1.0.67` after its power is completely disconnected and restored and it performs an OTA check. No update is offered when the device already reports the target version.
 
 ```text
 File:   comMTTL-W01_1.0.66.fwr
