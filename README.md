@@ -69,7 +69,7 @@ docker pull af950833/mttl-w01:latest
 docker pull af950833/mttl-w01:20260903
 ```
 
-고정 버전을 사용한다면 이후 명령의 `af950833/mttl-w01:latest`를 `af950833/mttl-w01:20260903`으로 바꾸십시오.
+고정 버전을 사용한다면 이후 명령의 `af950833/mttl-w01:latest`를 `af950833/mttl-w01:20260903` 형태로 바꾸십시오.
 
 ## 3. GitHub 소스로 직접 빌드
 
