@@ -421,8 +421,8 @@ MEF는 기기 등록·상태 및 OTA 확인에 사용되고, MQTT는 실시간 �
 
 1. 카드에 표시된 Local Server IP가 Docker 서버의 고정 IPv4 주소인지 확인합니다. 필요한 경우에만 **Override**를 선택해 직접 입력합니다.
 2. **Enable & Build**를 누릅니다. 서버는 기존 Root CA를 유지하면서 현재 IP가 SAN에 포함된 MEF·MQTT·QMS 인증서를 다시 발급하고, 같은 IP를 사용하는 `comMTTL-W01_1.0.67.fwr`를 생성합니다.
-3. 생성된 패치 펌웨어를 내려받습니다.
-4. 카드에 연결된 [OTA Tool (ttaengz's GitHub)](https://github.com/ttaengz/mttl-w01-matterbridge)을 이용해 멀티탭에 한 번 설치합니다.
+3. DNAT로 연결된 멀티탭은 전체 전원을 완전히 차단한 후 다시 공급하면 패치 펌웨어를 자동으로 내려받습니다.
+4. DNAT 구성이 불가능한 환경에서는 카드에 연결된 [OTA Tool (ttaengz's GitHub)](https://github.com/ttaengz/mttl-w01-matterbridge)을 이용해 멀티탭에 패치 펌웨어를 수동으로 설치합니다.
 
 빌드 결과의 SHA-256은 카드에 표시됩니다. 다운로드한 파일의 해시와 비교하면 전송 중 파일 손상 여부를 확인할 수 있습니다. 펌웨어 설치 중에는 전원을 차단하지 마십시오.
 

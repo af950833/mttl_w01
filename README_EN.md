@@ -421,8 +421,8 @@ MEF handles device registration, state, and OTA checks, while MQTT carries live 
 
 1. Confirm that Local Server IP is the fixed IPv4 address of the Docker host. Select **Override** only when you need to enter a different address.
 2. Select **Enable & Build**. The server preserves the existing root CA, reissues the MEF, MQTT, and QMS certificates with the current IP in their SANs, and builds `comMTTL-W01_1.0.67.fwr` for the same address.
-3. Download the generated patched firmware.
-4. Install it once on the power strip with the [OTA Tool (ttaengz's GitHub)](https://github.com/ttaengz/mttl-w01-matterbridge) linked from the card.
+3. For a power strip connected through DNAT, completely disconnect its power and then restore it. The device will download the patched firmware automatically.
+4. If DNAT cannot be configured, manually install the patched firmware on the power strip with the [OTA Tool (ttaengz's GitHub)](https://github.com/ttaengz/mttl-w01-matterbridge) linked from the card.
 
 The card displays the SHA-256 of the build. Compare it with the downloaded file to detect transfer damage. Do not disconnect power while installing firmware.
 
