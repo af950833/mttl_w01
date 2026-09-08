@@ -288,118 +288,9 @@ LOCAL_SERVER_IP=192.168.0.4
 
 ASUS 이외의 공유기는 프로젝트가 DNAT를 자동 설정하지 않습니다. 해당 공유기의 포트 포워딩, 정책 NAT 또는 방화벽 기능을 이용하여 위 표의 **목적지 IP와 목적지 포트 기준 DNAT 네 규칙**을 사용자가 직접 구현해야 합니다. 일반적인 외부 포트 포워딩과 달리 LAN 클라이언트가 특정 인터넷 IP로 보내는 트래픽을 내부 서버로 바꾸는 기능이 필요합니다.
 
-## 10. Android 프로비저닝 앱 설치
+DNAT 구성이 불가능한 공유기나 네트워크 환경에서는 **10. DNAT 없이 Direct-local 펌웨어 사용**으로 진행하십시오.
 
-대시보드 최상단의 QR 코드를 Android 휴대전화로 스캔하거나 아래 주소에서 APK를 받습니다.
-
-```text
-http://LOCAL_SERVER_IP:18833/downloads/MTTL-W01-Provisioner.apk
-```
-
-GitHub에서도 직접 받을 수 있습니다.
-
-- [MTTL-W01 Provisioner APK](web/downloads/MTTL-W01-Provisioner.apk)
-
-Android가 경고하면 해당 브라우저 또는 파일 관리자의 **알 수 없는 앱 설치** 권한을 허용합니다. Wi-Fi 검색을 위한 위치 또는 주변 기기 권한도 허용해야 합니다.
-
-이 APK를 이용하면 제조사 앱인 **U+ 스마트홈** 없이도 멀티탭을 프로비저닝할 수 있습니다.
-
-APK를 신뢰하기 어려운 사용자는 제조사 앱을 설치하고 회원가입한 뒤 제조사 앱으로 프로비저닝해도 됩니다. 다만 제조사 앱은 대한민국 휴대전화번호를 통한 본인 인증이 필요하므로, 대한민국 휴대전화번호를 사용할 수 없는 해외 사용자에게는 이 APK 사용을 권장합니다.
-
-## 11. 멀티탭 프로비저닝
-
-프로비저닝 전에 DNAT를 활성화하고 Docker 서버가 정상 동작 중인지 확인합니다.
-
-1. 멀티탭의 메인 버튼을 약 10초 이상 눌러 상태 LED가 빠르게 깜박이게 합니다.
-2. 앱에서 **SCAN WI-FI Network**를 누릅니다.
-3. `TONLY_TAP_XXXXXXX` 형식의 설정 AP가 나타날 때까지 천천히 반복합니다.
-4. **Home Wi-Fi SSID**에서 멀티탭이 사용할 2.4 GHz Wi-Fi를 선택합니다.
-5. **Home Wi-Fi password**에 암호를 입력합니다.
-6. **Provision**을 누릅니다.
-7. Android의 Wi-Fi 연결 승인 창이 나타나면 허용합니다.
-8. 앱 로그에 **Provision Success**와 **You can close this APP**이 표시될 때까지 기다립니다.
-9. 멀티탭이 자동으로 재부팅하고 홈 Wi-Fi에 연결될 때까지 기다립니다.
-10. 대시보드에 새 카드가 나타나고 상태 LED가 더 이상 깜빡이지 않는지 확인합니다.
-
-앱은 설정 AP 이름의 마지막 7자리로 `LGU_XXXXXXX` 형식의 AP 암호를 자동 계산합니다. 홈 Wi-Fi 정보는 멀티탭의 로컬 포트 `30300`으로 직접 전송합니다.
-
-대시보드에서 카드만 삭제해도 이미 프로비저닝된 멀티탭이 서버에 재접속하면 카드가 다시 생성될 수 있습니다. 완전히 삭제하려면 멀티탭을 초기화한 뒤 카드를 삭제하세요.
-
-## 12. 대시보드 기능
-
-- 기기 이름 및 채널 이름 변경
-- 전체 전원 및 1~4번 채널 개별 제어
-- 전체/채널별 현재 소비전력 확인
-- 누적 전력량 Meter 확인
-- 펌웨어 버전과 온라인 상태 확인
-- **HA Link** 활성화/비활성화
-- 기기 카드 삭제
-
-연결이 끊기면 기본적으로 약 45초 뒤 오프라인으로 판단합니다. 기기 상태 변경은 SSE를 통해 대시보드에 실시간으로 반영되며, 누락에 대비해 약 30초 간격으로 다시 확인합니다.
-
-## 13. Home Assistant MQTT 연동
-
-Home Assistant에 MQTT 통합과 MQTT Broker가 먼저 준비되어 있어야 합니다. 대시보드의 **Home Assistant MQTT** 카드에 입력합니다.
-
-- **MQTT Broker IP**: MQTT Broker의 내부 IP
-- **Port**: 기본값 `1883`
-- **Username / Password**: MQTT Broker 계정
-- **Discovery Prefix**: 기본값 `homeassistant`
-- **Topic Prefix**: 기본값 `mttl`
-
-**Save & Connect**를 누르고 `Status: Connected`를 확인합니다. 이후 각 멀티탭 카드의 **HA Link**를 활성화하면 MQTT Discovery 엔티티가 생성됩니다.
-
-MAC 마지막 7자리가 `97C0123`인 기기의 기본 Entity ID:
-
-```text
-switch.mttl_97c0123_all
-switch.mttl_97c0123_sw1
-switch.mttl_97c0123_sw2
-switch.mttl_97c0123_sw3
-switch.mttl_97c0123_sw4
-
-sensor.mttl_97c0123_powerall
-sensor.mttl_97c0123_power1
-sensor.mttl_97c0123_power2
-sensor.mttl_97c0123_power3
-sensor.mttl_97c0123_power4
-sensor.mttl_97c0123_meter
-```
-
-전체 스위치 표시 이름은 `SW All`, 누적 전력량 센서는 `Meter`입니다. 온라인 여부는 별도 센서가 아니라 각 엔티티의 MQTT availability로 전달됩니다.
-
-HA Link를 비활성화하면 MQTT Discovery 삭제 메시지가 발행됩니다. Home Assistant가 중지된 상태에서는 삭제를 즉시 처리하지 못할 수 있으므로 HA와 Broker가 실행 중일 때 비활성화하는 것이 좋습니다.
-
-### MTTL-W01 Lovelace 카드
-
-[`ha-card/mttl-w01-card.js`](ha-card/mttl-w01-card.js)를 Home Assistant의 `/config/www/`에 복사하고 `/local/mttl-w01-card.js`를 JavaScript Module 리소스로 등록합니다. MAC 마지막 7자리만 입력하면 전체 전력, 누적 Meter, 전체 스위치와 4개 채널의 이름·현재 전력·스위치를 자동 배치합니다.
-
-```yaml
-type: custom:mttl-w01-card
-mac: 97c0123
-```
-
-![MTTL-W01 Home Assistant Lovelace 카드](ha-card/HA_card.png)
-
-상세 설치법과 선택 설정은 [`ha-card/README.md`](ha-card/README.md)를 참고하십시오. Home Assistant에서 기본 Entity ID를 직접 변경한 경우에는 자동 매핑되지 않습니다.
-
-## 14. 펌웨어 자동 업데이트
-
-이미지에는 수정하지 않은 MTTL-W01 정식 `1.0.66` 펌웨어가 포함됩니다. 기기가 로컬 MEF 서버에 보고한 버전이 `1.0.66`보다 낮으면 서버가 자동으로 업데이트를 진행하며, `1.0.66` 이상에는 수행하지 않습니다.
-
-```text
-파일:   comMTTL-W01_1.0.66.fwr
-크기:   327944 bytes
-SHA256: d780b578af69d52f3a05191a8e7d91a20e05085a912722327481cd5663682c04
-```
-
-업데이트 중에는 전원을 차단하지 마십시오. 다운로드 후 여러 번 재부팅하거나 다시 온라인으로 나타나기까지 시간이 걸릴 수 있습니다.
-
-```bash
-docker logs -f mttl-local
-```
-
-## 15. DNAT 없이 Direct-local 펌웨어 사용
+## 10. DNAT 없이 Direct-local 펌웨어 사용
 
 공유기에서 목적지 기반 DNAT를 사용할 수 없다면 대시보드의 **Direct-local F/W Patch** 기능을 사용할 수 있습니다. 이 기능은 이미지에 포함된 순정 `1.0.66`을 서버 환경에 맞게 패치하여 `1.0.67`을 실행 시점에 생성합니다. 미리 만들어진 공통 패치 펌웨어를 배포하는 방식이 아니며, 생성된 파일에는 사용자의 Local Server IP가 들어갑니다.
 
@@ -447,6 +338,117 @@ DNAT를 통해 로컬 서버에 연결되는 기기는 패치를 **Disable**한 
 - 이전 IP를 사용할 수 없다면 새 IP로 생성한 펌웨어를 OTA Tool로 다시 설치하십시오.
 
 > 이 기능은 MTTL-W01 `1.0.66` 원본의 정확한 SHA-256을 확인한 뒤에만 패치합니다. 다른 모델이나 다른 펌웨어 버전에는 적용되지 않습니다. 잘못된 IP나 설치 중 전원 차단은 기기 복구 작업을 필요로 할 수 있으므로 먼저 한 대로 검증하십시오.
+
+## 11. Android 프로비저닝 앱 설치
+
+대시보드 최상단의 QR 코드를 Android 휴대전화로 스캔하거나 아래 주소에서 APK를 받습니다.
+
+```text
+http://LOCAL_SERVER_IP:18833/downloads/MTTL-W01-Provisioner.apk
+```
+
+GitHub에서도 직접 받을 수 있습니다.
+
+- [MTTL-W01 Provisioner APK](web/downloads/MTTL-W01-Provisioner.apk)
+
+Android가 경고하면 해당 브라우저 또는 파일 관리자의 **알 수 없는 앱 설치** 권한을 허용합니다. Wi-Fi 검색을 위한 위치 또는 주변 기기 권한도 허용해야 합니다.
+
+이 APK를 이용하면 제조사 앱인 **U+ 스마트홈** 없이도 멀티탭을 프로비저닝할 수 있습니다.
+
+APK를 신뢰하기 어려운 사용자는 제조사 앱을 설치하고 회원가입한 뒤 제조사 앱으로 프로비저닝해도 됩니다. 다만 제조사 앱은 대한민국 휴대전화번호를 통한 본인 인증이 필요하므로, 대한민국 휴대전화번호를 사용할 수 없는 해외 사용자에게는 이 APK 사용을 권장합니다.
+
+## 12. 멀티탭 프로비저닝
+
+프로비저닝 전에 Docker 서버가 정상 동작 중인지 확인합니다. DNAT 방식을 사용한다면 DNAT를 활성화하고, DNAT 구성이 불가능하다면 10번에 따라 Direct-local 펌웨어를 먼저 설치합니다.
+
+1. 멀티탭의 메인 버튼을 약 10초 이상 눌러 상태 LED가 빠르게 깜박이게 합니다.
+2. 앱에서 **SCAN WI-FI Network**를 누릅니다.
+3. `TONLY_TAP_XXXXXXX` 형식의 설정 AP가 나타날 때까지 천천히 반복합니다.
+4. **Home Wi-Fi SSID**에서 멀티탭이 사용할 2.4 GHz Wi-Fi를 선택합니다.
+5. **Home Wi-Fi password**에 암호를 입력합니다.
+6. **Provision**을 누릅니다.
+7. Android의 Wi-Fi 연결 승인 창이 나타나면 허용합니다.
+8. 앱 로그에 **Provision Success**와 **You can close this APP**이 표시될 때까지 기다립니다.
+9. 멀티탭이 자동으로 재부팅하고 홈 Wi-Fi에 연결될 때까지 기다립니다.
+10. 대시보드에 새 카드가 나타나고 상태 LED가 더 이상 깜빡이지 않는지 확인합니다.
+
+앱은 설정 AP 이름의 마지막 7자리로 `LGU_XXXXXXX` 형식의 AP 암호를 자동 계산합니다. 홈 Wi-Fi 정보는 멀티탭의 로컬 포트 `30300`으로 직접 전송합니다.
+
+대시보드에서 카드만 삭제해도 이미 프로비저닝된 멀티탭이 서버에 재접속하면 카드가 다시 생성될 수 있습니다. 완전히 삭제하려면 멀티탭을 초기화한 뒤 카드를 삭제하세요.
+
+## 13. 대시보드 기능
+
+- 기기 이름 및 채널 이름 변경
+- 전체 전원 및 1~4번 채널 개별 제어
+- 전체/채널별 현재 소비전력 확인
+- 누적 전력량 Meter 확인
+- 펌웨어 버전과 온라인 상태 확인
+- **HA Link** 활성화/비활성화
+- 기기 카드 삭제
+
+연결이 끊기면 기본적으로 약 45초 뒤 오프라인으로 판단합니다. 기기 상태 변경은 SSE를 통해 대시보드에 실시간으로 반영되며, 누락에 대비해 약 30초 간격으로 다시 확인합니다.
+
+## 14. Home Assistant MQTT 연동
+
+Home Assistant에 MQTT 통합과 MQTT Broker가 먼저 준비되어 있어야 합니다. 대시보드의 **Home Assistant MQTT** 카드에 입력합니다.
+
+- **MQTT Broker IP**: MQTT Broker의 내부 IP
+- **Port**: 기본값 `1883`
+- **Username / Password**: MQTT Broker 계정
+- **Discovery Prefix**: 기본값 `homeassistant`
+- **Topic Prefix**: 기본값 `mttl`
+
+**Save & Connect**를 누르고 `Status: Connected`를 확인합니다. 이후 각 멀티탭 카드의 **HA Link**를 활성화하면 MQTT Discovery 엔티티가 생성됩니다.
+
+MAC 마지막 7자리가 `97C0123`인 기기의 기본 Entity ID:
+
+```text
+switch.mttl_97c0123_all
+switch.mttl_97c0123_sw1
+switch.mttl_97c0123_sw2
+switch.mttl_97c0123_sw3
+switch.mttl_97c0123_sw4
+
+sensor.mttl_97c0123_powerall
+sensor.mttl_97c0123_power1
+sensor.mttl_97c0123_power2
+sensor.mttl_97c0123_power3
+sensor.mttl_97c0123_power4
+sensor.mttl_97c0123_meter
+```
+
+전체 스위치 표시 이름은 `SW All`, 누적 전력량 센서는 `Meter`입니다. 온라인 여부는 별도 센서가 아니라 각 엔티티의 MQTT availability로 전달됩니다.
+
+HA Link를 비활성화하면 MQTT Discovery 삭제 메시지가 발행됩니다. Home Assistant가 중지된 상태에서는 삭제를 즉시 처리하지 못할 수 있으므로 HA와 Broker가 실행 중일 때 비활성화하는 것이 좋습니다.
+
+### MTTL-W01 Lovelace 카드
+
+[`ha-card/mttl-w01-card.js`](ha-card/mttl-w01-card.js)를 Home Assistant의 `/config/www/`에 복사하고 `/local/mttl-w01-card.js`를 JavaScript Module 리소스로 등록합니다. MAC 마지막 7자리만 입력하면 전체 전력, 누적 Meter, 전체 스위치와 4개 채널의 이름·현재 전력·스위치를 자동 배치합니다.
+
+```yaml
+type: custom:mttl-w01-card
+mac: 97c0123
+```
+
+![MTTL-W01 Home Assistant Lovelace 카드](ha-card/HA_card.png)
+
+상세 설치법과 선택 설정은 [`ha-card/README.md`](ha-card/README.md)를 참고하십시오. Home Assistant에서 기본 Entity ID를 직접 변경한 경우에는 자동 매핑되지 않습니다.
+
+## 15. 펌웨어 자동 업데이트
+
+이미지에는 수정하지 않은 MTTL-W01 정식 `1.0.66` 펌웨어가 포함됩니다. 기기가 로컬 MEF 서버에 보고한 버전이 `1.0.66`보다 낮으면 서버가 자동으로 업데이트를 진행하며, `1.0.66` 이상에는 수행하지 않습니다.
+
+```text
+파일:   comMTTL-W01_1.0.66.fwr
+크기:   327944 bytes
+SHA256: d780b578af69d52f3a05191a8e7d91a20e05085a912722327481cd5663682c04
+```
+
+업데이트 중에는 전원을 차단하지 마십시오. 다운로드 후 여러 번 재부팅하거나 다시 온라인으로 나타나기까지 시간이 걸릴 수 있습니다.
+
+```bash
+docker logs -f mttl-local
+```
 
 ## 16. 데이터와 백업
 

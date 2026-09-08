@@ -288,118 +288,9 @@ The creation commands assume an empty initial state. Repeating them can duplicat
 
 Routers from other manufacturers are not configured automatically by this project. Users must implement the four **destination IP and destination port based DNAT rules** using their router's policy NAT or firewall features. Ordinary inbound Internet port forwarding is not sufficient; the router must redirect traffic that a LAN client sends to the specified Internet IP addresses.
 
-## 10. Install the Android provisioning app
+If DNAT cannot be configured on your router or network, continue with **10. Use Direct-local firmware without DNAT**.
 
-Scan the QR code at the top of the dashboard or download the APK from:
-
-```text
-http://LOCAL_SERVER_IP:18833/downloads/MTTL-W01-Provisioner.apk
-```
-
-It can also be downloaded directly from GitHub:
-
-- [MTTL-W01 Provisioner APK](web/downloads/MTTL-W01-Provisioner.apk)
-
-If Android displays a warning, temporarily allow **Install unknown apps** for the browser or file manager. Also grant the location or nearby-device permission required for Wi-Fi scanning.
-
-This APK can provision the power strip without the manufacturer's **U+ Smart Home** app.
-
-Users who do not trust the supplied APK may install the manufacturer app, create an account, and provision the device with that app instead. However, the manufacturer app requires identity verification through a South Korean mobile phone number. The supplied APK is therefore recommended for international users who do not have access to a South Korean number.
-
-## 11. Provision a power strip
-
-Enable DNAT and verify that the Docker server is running before provisioning.
-
-1. Hold the main button on the power strip for about 10 seconds until the status LED flashes rapidly.
-2. Select **SCAN WI-FI Network** in the app.
-3. Repeat the scan slowly until a setup network named `TONLY_TAP_XXXXXXX` appears.
-4. Select the 2.4 GHz network under **Home Wi-Fi SSID**.
-5. Enter its password under **Home Wi-Fi password**.
-6. Press **Provision**.
-7. Approve the Android Wi-Fi connection request if it appears.
-8. Wait for **Provision Success** and **You can close this APP** in the app log.
-9. Wait while the device reboots automatically and connects to the home Wi-Fi network.
-10. Confirm that a new card appears on the dashboard and that the device status LED stops flashing.
-
-The app derives the setup-network password in the form `LGU_XXXXXXX` from the last seven characters of the AP name. It sends the home Wi-Fi credentials directly to local port `30300` on the power strip.
-
-Deleting only the dashboard card does not deprovision the device. The card can reappear when the device reconnects. To remove the device completely, reset the power strip first and then delete its card.
-
-## 12. Dashboard features
-
-- Edit the device and outlet names
-- Control master power and outlets 1–4
-- View total and per-outlet current power
-- View the cumulative energy Meter
-- View firmware version and online status
-- Enable or disable **HA Link**
-- Delete a device card
-
-An inactive device is marked offline after approximately 45 seconds. Device state changes are reflected on the dashboard in real time through SSE, with a fallback refresh approximately every 30 seconds.
-
-## 13. Home Assistant MQTT integration
-
-Home Assistant must already have an MQTT integration and an accessible MQTT broker. Enter the following values in the **Home Assistant MQTT** card:
-
-- **MQTT Broker IP**: LAN address of the MQTT broker
-- **Port**: default `1883`
-- **Username / Password**: MQTT broker credentials
-- **Discovery Prefix**: default `homeassistant`
-- **Topic Prefix**: default `mttl`
-
-Select **Save & Connect** and confirm `Status: Connected`. Enable **HA Link** on each device card to publish its MQTT Discovery entities.
-
-Default entity IDs for a device whose final seven MAC characters are `97C0123`:
-
-```text
-switch.mttl_97c0123_all
-switch.mttl_97c0123_sw1
-switch.mttl_97c0123_sw2
-switch.mttl_97c0123_sw3
-switch.mttl_97c0123_sw4
-
-sensor.mttl_97c0123_powerall
-sensor.mttl_97c0123_power1
-sensor.mttl_97c0123_power2
-sensor.mttl_97c0123_power3
-sensor.mttl_97c0123_power4
-sensor.mttl_97c0123_meter
-```
-
-The master switch is displayed as `SW All`, and the cumulative energy sensor is displayed as `Meter`. Online status is sent through MQTT availability for each entity instead of a separate sensor.
-
-Disabling HA Link publishes MQTT Discovery deletion messages. If Home Assistant is stopped, it may not process them immediately. Disable HA Link while Home Assistant and the broker are running.
-
-### MTTL-W01 Lovelace card
-
-Copy [`ha-card/mttl-w01-card.js`](ha-card/mttl-w01-card.js) to Home Assistant's `/config/www/` directory and register `/local/mttl-w01-card.js` as a JavaScript Module resource. Enter only the final seven MAC characters to automatically arrange total power, the cumulative Meter, the master switch, and four channel buttons with names and live power.
-
-```yaml
-type: custom:mttl-w01-card
-mac: 97c0123
-```
-
-![MTTL-W01 Home Assistant Lovelace card](ha-card/HA_card.png)
-
-See [`ha-card/README.md`](ha-card/README.md) for installation details and optional settings. Automatic mapping will not work if the default Home Assistant Entity IDs have been changed manually.
-
-## 14. Automatic firmware update
-
-The image includes the unmodified official MTTL-W01 `1.0.66` firmware. When a device reports a version older than `1.0.66` to the local MEF endpoint, the server automatically performs the update. It does not run for devices on `1.0.66` or later.
-
-```text
-File:   comMTTL-W01_1.0.66.fwr
-Size:   327944 bytes
-SHA256: d780b578af69d52f3a05191a8e7d91a20e05085a912722327481cd5663682c04
-```
-
-Do not disconnect power while an update is in progress. The device may reboot more than once and can take some time to reappear online.
-
-```bash
-docker logs -f mttl-local
-```
-
-## 15. Use Direct-local firmware without DNAT
+## 10. Use Direct-local firmware without DNAT
 
 If destination-based DNAT is unavailable on the router, use the **Direct-local F/W Patch** card on the dashboard. It patches the bundled original `1.0.66` firmware for the local environment and generates `1.0.67` at runtime. This is not a prebuilt universal patched image: the generated file contains the user's Local Server IP.
 
@@ -447,6 +338,117 @@ If the server IP changes, run **Enable & Build** again and install the newly gen
 - If the previous IP is unavailable, install the firmware generated for the new IP with the OTA Tool.
 
 > This feature patches only the exact supported MTTL-W01 `1.0.66` source after checking its SHA-256. It does not support other models or firmware revisions. A wrong IP or power loss during installation may require recovery, so test with one device first.
+
+## 11. Install the Android provisioning app
+
+Scan the QR code at the top of the dashboard or download the APK from:
+
+```text
+http://LOCAL_SERVER_IP:18833/downloads/MTTL-W01-Provisioner.apk
+```
+
+It can also be downloaded directly from GitHub:
+
+- [MTTL-W01 Provisioner APK](web/downloads/MTTL-W01-Provisioner.apk)
+
+If Android displays a warning, temporarily allow **Install unknown apps** for the browser or file manager. Also grant the location or nearby-device permission required for Wi-Fi scanning.
+
+This APK can provision the power strip without the manufacturer's **U+ Smart Home** app.
+
+Users who do not trust the supplied APK may install the manufacturer app, create an account, and provision the device with that app instead. However, the manufacturer app requires identity verification through a South Korean mobile phone number. The supplied APK is therefore recommended for international users who do not have access to a South Korean number.
+
+## 12. Provision a power strip
+
+Verify that the Docker server is running before provisioning. Enable DNAT when using the DNAT method; if DNAT cannot be configured, install the Direct-local firmware first as described in step 10.
+
+1. Hold the main button on the power strip for about 10 seconds until the status LED flashes rapidly.
+2. Select **SCAN WI-FI Network** in the app.
+3. Repeat the scan slowly until a setup network named `TONLY_TAP_XXXXXXX` appears.
+4. Select the 2.4 GHz network under **Home Wi-Fi SSID**.
+5. Enter its password under **Home Wi-Fi password**.
+6. Press **Provision**.
+7. Approve the Android Wi-Fi connection request if it appears.
+8. Wait for **Provision Success** and **You can close this APP** in the app log.
+9. Wait while the device reboots automatically and connects to the home Wi-Fi network.
+10. Confirm that a new card appears on the dashboard and that the device status LED stops flashing.
+
+The app derives the setup-network password in the form `LGU_XXXXXXX` from the last seven characters of the AP name. It sends the home Wi-Fi credentials directly to local port `30300` on the power strip.
+
+Deleting only the dashboard card does not deprovision the device. The card can reappear when the device reconnects. To remove the device completely, reset the power strip first and then delete its card.
+
+## 13. Dashboard features
+
+- Edit the device and outlet names
+- Control master power and outlets 1–4
+- View total and per-outlet current power
+- View the cumulative energy Meter
+- View firmware version and online status
+- Enable or disable **HA Link**
+- Delete a device card
+
+An inactive device is marked offline after approximately 45 seconds. Device state changes are reflected on the dashboard in real time through SSE, with a fallback refresh approximately every 30 seconds.
+
+## 14. Home Assistant MQTT integration
+
+Home Assistant must already have an MQTT integration and an accessible MQTT broker. Enter the following values in the **Home Assistant MQTT** card:
+
+- **MQTT Broker IP**: LAN address of the MQTT broker
+- **Port**: default `1883`
+- **Username / Password**: MQTT broker credentials
+- **Discovery Prefix**: default `homeassistant`
+- **Topic Prefix**: default `mttl`
+
+Select **Save & Connect** and confirm `Status: Connected`. Enable **HA Link** on each device card to publish its MQTT Discovery entities.
+
+Default entity IDs for a device whose final seven MAC characters are `97C0123`:
+
+```text
+switch.mttl_97c0123_all
+switch.mttl_97c0123_sw1
+switch.mttl_97c0123_sw2
+switch.mttl_97c0123_sw3
+switch.mttl_97c0123_sw4
+
+sensor.mttl_97c0123_powerall
+sensor.mttl_97c0123_power1
+sensor.mttl_97c0123_power2
+sensor.mttl_97c0123_power3
+sensor.mttl_97c0123_power4
+sensor.mttl_97c0123_meter
+```
+
+The master switch is displayed as `SW All`, and the cumulative energy sensor is displayed as `Meter`. Online status is sent through MQTT availability for each entity instead of a separate sensor.
+
+Disabling HA Link publishes MQTT Discovery deletion messages. If Home Assistant is stopped, it may not process them immediately. Disable HA Link while Home Assistant and the broker are running.
+
+### MTTL-W01 Lovelace card
+
+Copy [`ha-card/mttl-w01-card.js`](ha-card/mttl-w01-card.js) to Home Assistant's `/config/www/` directory and register `/local/mttl-w01-card.js` as a JavaScript Module resource. Enter only the final seven MAC characters to automatically arrange total power, the cumulative Meter, the master switch, and four channel buttons with names and live power.
+
+```yaml
+type: custom:mttl-w01-card
+mac: 97c0123
+```
+
+![MTTL-W01 Home Assistant Lovelace card](ha-card/HA_card.png)
+
+See [`ha-card/README.md`](ha-card/README.md) for installation details and optional settings. Automatic mapping will not work if the default Home Assistant Entity IDs have been changed manually.
+
+## 15. Automatic firmware update
+
+The image includes the unmodified official MTTL-W01 `1.0.66` firmware. When a device reports a version older than `1.0.66` to the local MEF endpoint, the server automatically performs the update. It does not run for devices on `1.0.66` or later.
+
+```text
+File:   comMTTL-W01_1.0.66.fwr
+Size:   327944 bytes
+SHA256: d780b578af69d52f3a05191a8e7d91a20e05085a912722327481cd5663682c04
+```
+
+Do not disconnect power while an update is in progress. The device may reboot more than once and can take some time to reappear online.
+
+```bash
+docker logs -f mttl-local
+```
 
 ## 16. Data and backups
 
