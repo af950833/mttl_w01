@@ -4,7 +4,7 @@
 
 A Docker-based local server for using the LG U+ `MTTL-W01` smart power strip on a private network without the manufacturer's cloud.
 
-![MTTL-W01 local server web dashboard](docs/dashboard.png)
+![MTTL-W01 local server web dashboard](docs/dashboard-20260909.png)
 
 Main features:
 
