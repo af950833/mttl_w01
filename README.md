@@ -16,6 +16,7 @@ LG U+ `MTTL-W01` 스마트 멀티탭을 제조사 클라우드 없이 내부망�
 - Home Assistant MQTT Discovery 연동
 - Android 프로비저닝 앱과 다운로드 QR
 - 구형 기기의 정식 `1.0.66` 펌웨어 자동 업데이트
+- DNAT 없이 서버에 직접 연결하는 환경별 `1.0.67` 펌웨어 생성 및 순정 `1.0.66` 복원 지원
 - DB 없이 JSON/JSONL 파일로 상태 저장
 
 > 이 프로젝트는 LG U+의 공식 프로젝트가 아닙니다. 신뢰할 수 있는 개인 내부망에서 사용하는 것을 전제로 합니다.
@@ -41,6 +42,8 @@ LG U+ `MTTL-W01` 스마트 멀티탭을 제조사 클라우드 없이 내부망�
 - 내부망 고정 IP 또는 DHCP 고정 할당을 적용한 서버
 - SSH가 활성화된 ASUS 공유기
   - SSH 계정이 `/usr/sbin/iptables`와 `/usr/sbin/conntrack`을 실행할 수 있어야 합니다.
+- DNAT를 사용할 수 없어 Direct-local 펌웨어를 수동 설치하는 경우 Wi-Fi 기능이 있는 Windows PC 또는 macOS 기기
+  - 대시보드에서 안내하는 OTA Tool을 실행하고 멀티탭의 설정 AP에 연결할 수 있어야 합니다.
 - Android 10 이상 휴대전화
 - 멀티탭이 연결할 2.4 GHz Wi-Fi SSID와 암호
 - Home Assistant 연동 시 별도의 MQTT Broker

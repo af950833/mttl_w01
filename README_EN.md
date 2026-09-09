@@ -16,6 +16,7 @@ Main features:
 - Home Assistant MQTT Discovery integration
 - Android provisioning app with a download QR code
 - Automatic upgrade of older devices to the official `1.0.66` firmware
+- Environment-specific `1.0.67` firmware generation for direct local connections without DNAT, with restoration to the original `1.0.66`
 - JSON/JSONL file storage without a database
 
 > This is not an official LG U+ project. It is intended for use on a trusted private home network.
@@ -41,6 +42,8 @@ You do not need to assign a fixed IP to each power strip or create per-device DN
 - A static address or DHCP reservation for the Linux server
 - An ASUS router with SSH enabled
   - The SSH account must be able to run `/usr/sbin/iptables` and `/usr/sbin/conntrack`.
+- A Wi-Fi-capable Windows PC or macOS device when DNAT is unavailable and the Direct-local firmware must be installed manually
+  - It must be able to run the OTA Tool linked from the dashboard and connect to the power strip's setup AP.
 - An Android 10 or later phone
 - A 2.4 GHz Wi-Fi SSID and password for the power strip
 - An MQTT broker if Home Assistant integration is required
