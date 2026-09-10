@@ -308,9 +308,11 @@ If destination-based DNAT is unavailable on the router, use the **Direct-local F
 | MEF and OTA | Manufacturer destination TCP `443` | Local server TCP `18443` |
 | MQTT | Manufacturer destination TCP `18831` | Local server TCP `18832` |
 | QMS | Manufacturer destination TCP `443` | Local server TCP `19443` |
+| Status data | Master/channel power state, instantaneous power, and total cumulative energy | All `1.0.66` values plus total voltage and current, and per-channel energy, current, and temperature |
+| Home Assistant sensors | Total/channel instantaneous power and total cumulative energy | All `1.0.66` sensors plus total voltage and current, and per-channel energy, current, and temperature |
 | Firmware file | `comMTTL-W01_1.0.66.fwr` | `comMTTL-W01_1.0.68.fwr` |
 
-MEF handles device registration, state, and OTA checks, while MQTT carries live state reports and commands. The local server accepts QMS requests and returns an empty `HTTP 200` response. The patch changes the three service destinations and ports, updates the displayed firmware version, and recalculates the firmware checksum.
+MEF handles device registration, state, and OTA checks, while MQTT carries live state reports and commands. The local server accepts QMS requests and returns an empty `HTTP 200` response. The `1.0.68` patch changes the three service destinations and ports, updates the displayed firmware version, adds extended status values, and recalculates the firmware checksum.
 
 ### Build and install
 
