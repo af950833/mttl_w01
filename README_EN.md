@@ -550,6 +550,7 @@ If the log contains `missing certificate files`, verify the files and mount path
 - Added extended dashboard sensors, offline sensor rendering, and a 2×2 channel-card layout
 - Added extended sensors to Home Assistant MQTT Discovery
 - Added the separate `mttl-w01-1.0.68-card.js` Lovelace card while retaining the stock `1.0.66` card
+- Added OTA responses for patched `1.0.68` while enabled and original `1.0.66` while disabled
 
 ### `20260909`
 
