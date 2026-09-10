@@ -16,7 +16,8 @@ Main features:
 - Home Assistant MQTT Discovery integration
 - Android provisioning app with a download QR code
 - Automatic upgrade of older devices to the official `1.0.66` firmware
-- Environment-specific `1.0.67` firmware generation for direct local connections without DNAT, with restoration to the original `1.0.66`
+- Environment-specific `1.0.68` firmware generation for direct local connections without DNAT, with restoration to the original `1.0.66`
+- Extended `1.0.68` status reporting for voltage, total current, and per-channel energy, current, and temperature
 - JSON/JSONL file storage without a database
 
 > This is not an official LG U+ project. It is intended for use on a trusted private home network.
@@ -295,11 +296,11 @@ If DNAT cannot be configured on your router or network, continue with **10. Use 
 
 ## 10. Use Direct-local firmware without DNAT
 
-If destination-based DNAT is unavailable on the router, use the **Direct-local F/W Patch** card on the dashboard. It patches the bundled original `1.0.66` firmware for the local environment and generates `1.0.67` at runtime. This is not a prebuilt universal patched image: the generated file contains the user's Local Server IP.
+If destination-based DNAT is unavailable on the router, use the **Direct-local F/W Patch** card on the dashboard. It patches the bundled original `1.0.66` firmware for the local environment and generates `1.0.68` at runtime. This is not a prebuilt universal patched image: the generated file contains the user's Local Server IP.
 
 ### Original versus Direct-local firmware
 
-| Item | Original `1.0.66` | Direct-local `1.0.67` |
+| Item | Original `1.0.66` | Direct-local `1.0.68` |
 | --- | --- | --- |
 | Destination | LG U+ service domain/IP | Local Server IP of the Docker host |
 | Connection | Requires ASUS Router DNAT | Connects directly; DNAT is not required |
@@ -307,14 +308,14 @@ If destination-based DNAT is unavailable on the router, use the **Direct-local F
 | MEF and OTA | Manufacturer destination TCP `443` | Local server TCP `18443` |
 | MQTT | Manufacturer destination TCP `18831` | Local server TCP `18832` |
 | QMS | Manufacturer destination TCP `443` | Local server TCP `19443` |
-| Firmware file | `comMTTL-W01_1.0.66.fwr` | `comMTTL-W01_1.0.67.fwr` |
+| Firmware file | `comMTTL-W01_1.0.66.fwr` | `comMTTL-W01_1.0.68.fwr` |
 
 MEF handles device registration, state, and OTA checks, while MQTT carries live state reports and commands. The local server accepts QMS requests and returns an empty `HTTP 200` response. The patch changes the three service destinations and ports, updates the displayed firmware version, and recalculates the firmware checksum.
 
 ### Build and install
 
 1. Confirm that Local Server IP is the fixed IPv4 address of the Docker host. Select **Override** only when you need to enter a different address.
-2. Select **Enable & Build**. The server preserves the existing root CA, reissues the MEF, MQTT, and QMS certificates with the current IP in their SANs, and builds `comMTTL-W01_1.0.67.fwr` for the same address.
+2. Select **Enable & Build**. The server preserves the existing root CA, reissues the MEF, MQTT, and QMS certificates with the current IP in their SANs, and builds `comMTTL-W01_1.0.68.fwr` for the same address.
 3. For a power strip connected through DNAT, completely disconnect its power and then restore it. The device will download the patched firmware automatically.
 4. If DNAT cannot be configured, manually install the patched firmware on the power strip with the [OTA Tool (ttaengz's GitHub)](https://github.com/ttaengz/mttl-w01-matterbridge) linked from the card.
 
@@ -322,22 +323,22 @@ The card displays the SHA-256 of the build. Compare it with the downloaded file 
 
 ### What Enable and Disable do
 
-- **Enable & Build**: saves the enabled state, regenerates certificates and `1.0.67` for the current IP, and makes the local MEF endpoint offer that firmware over OTA.
+- **Enable & Build**: saves the enabled state, regenerates certificates and `1.0.68` for the current IP, and makes the local MEF endpoint offer that firmware over OTA.
 - **Disable**: makes the local MEF endpoint offer the original `1.0.66`. It does not immediately modify or remove firmware already installed on a device.
 - The setting is stored in `/srv/mttl/data/firmware-patch.json`, so it survives an update or reinstall that mounts the same data directory.
-- Generated `1.0.67` is stored under `/srv/mttl/data/firmware-patch/` and is preserved across container replacement when `/srv/mttl/data` is retained.
+- Generated `1.0.68` is stored under `/srv/mttl/data/firmware-patch/` and is preserved across container replacement when `/srv/mttl/data` is retained.
 
 ### Restore the original firmware
 
-For a device connected to the local server through DNAT, disable the patch and wait for its next OTA check to restore `1.0.66`. A Direct-local `1.0.67` device connects directly to its configured server IP, so it can also restore through an OTA check after **Disable** while the server remains reachable at that address. If the device cannot reach the server, use the OTA Tool or a temporary DNAT configuration.
+For a device connected to the local server through DNAT, disable the patch and wait for its next OTA check to restore `1.0.66`. A Direct-local `1.0.68` device connects directly to its configured server IP, so it can also restore through an OTA check after **Disable** while the server remains reachable at that address. If the device cannot reach the server, use the OTA Tool or a temporary DNAT configuration.
 
 ### When the server IP changes
 
 If the server IP changes, run **Enable & Build** again and install the newly generated firmware on each device. A DHCP reservation for the server is strongly recommended.
 
 - The existing root CA is preserved; only service certificates are reissued with the new IP.
-- An installed `1.0.67` continues to use the previous IP, so regenerating certificates alone cannot redirect it.
-- If the server can temporarily run at the previous IP, it can deliver the newly generated `1.0.67` over OTA.
+- An installed `1.0.68` continues to use the previous IP, so regenerating certificates alone cannot redirect it.
+- If the server can temporarily run at the previous IP, it can deliver the newly generated `1.0.68` over OTA.
 - If the previous IP is unavailable, install the firmware generated for the new IP with the OTA Tool.
 
 > This feature patches only the exact supported MTTL-W01 `1.0.66` source after checking its SHA-256. It does not support other models or firmware revisions. A wrong IP or power loss during installation may require recovery, so test with one device first.
@@ -448,7 +449,7 @@ See [`ha-card/README.md`](ha-card/README.md) for installation details and option
 
 The image includes the unmodified official MTTL-W01 `1.0.66` firmware. When **Direct-local F/W Patch** is disabled, the local MEF endpoint offers the original `1.0.66` firmware whenever the device reports a different version.
 
-When the firmware patch is enabled, the OTA target changes to Direct-local `1.0.67`. A `1.0.66` device connected to the local server through DNAT automatically updates to `1.0.67` after its power is completely disconnected and restored and it performs an OTA check. No update is offered when the device already reports the target version.
+When the firmware patch is enabled, the OTA target changes to Direct-local `1.0.68`. A `1.0.66` device connected to the local server through DNAT automatically updates to `1.0.68` after its power is completely disconnected and restored and it performs an OTA check. No update is offered when the device already reports the target version.
 
 ```text
 File:   comMTTL-W01_1.0.66.fwr
