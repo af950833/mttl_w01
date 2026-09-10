@@ -388,11 +388,13 @@ Deleting only the dashboard card does not deprovision the device. The card can r
 - Control master power and outlets 1–4
 - View total and per-outlet current power
 - View the cumulative energy Meter
+- With Direct-local `1.0.68`, view total voltage and current plus per-channel energy, current, and temperature
+- Display four channels as a 2×2 card grid with each channel's sensor values arranged vertically
 - View firmware version and online status
 - Enable or disable **HA Link**
 - Delete a device card
 
-An inactive device is marked offline after approximately 45 seconds. Device state changes are reflected on the dashboard in real time through SSE, with a fallback refresh approximately every 30 seconds.
+An inactive device is marked offline after approximately 45 seconds. Sensor values for an offline device are shown as `-` while retaining their units. Device state changes are reflected on the dashboard in real time through SSE, with a fallback refresh approximately every 30 seconds. Because firmware `1.0.66` does not provide the extended status values, `1.0.68`-specific sensor fields may be omitted or shown without values.
 
 ## 14. Home Assistant MQTT integration
 
