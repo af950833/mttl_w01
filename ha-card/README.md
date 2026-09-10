@@ -5,7 +5,13 @@ MTTL-W01의 MAC 마지막 7자리만 입력하면 전체 및 4개 채널 스위�
 - `mttl-w01-card.js`: 순정 `1.0.66`용 기본 카드
 - `mttl-w01-1.0.68-card.js`: 확장 `1.0.68`용 카드. 전압·전체 전류와 채널별 누적 전력량·전류·온도를 추가로 표시합니다.
 
-![MTTL-W01 Home Assistant Lovelace 카드](HA_card.png)
+`1.0.66` 기본 카드:
+
+![MTTL-W01 1.0.66 Home Assistant Lovelace 카드](HA_card.png)
+
+`1.0.68` 확장 센서 카드:
+
+![MTTL-W01 1.0.68 Home Assistant Lovelace 카드](HA_card_1.0.68.png)
 
 ## 설치
 

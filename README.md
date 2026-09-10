@@ -4,7 +4,7 @@
 
 LG U+ `MTTL-W01` 스마트 멀티탭을 제조사 클라우드 없이 내부망에서 사용하기 위한 Docker 기반 로컬 서버입니다.
 
-![MTTL-W01 로컬 서버 웹 대시보드](docs/dashboard-20260909.png)
+![MTTL-W01 로컬 서버 웹 대시보드](docs/dashboard-20260911.png)
 
 주요 기능:
 
@@ -441,7 +441,13 @@ type: custom:mttl-w01-1-0-68-card
 mac: 97c0123
 ```
 
-![MTTL-W01 Home Assistant Lovelace 카드](ha-card/HA_card.png)
+`1.0.66` 기본 카드:
+
+![MTTL-W01 1.0.66 Home Assistant Lovelace 카드](ha-card/HA_card.png)
+
+`1.0.68` 확장 센서 카드:
+
+![MTTL-W01 1.0.68 Home Assistant Lovelace 카드](ha-card/HA_card_1.0.68.png)
 
 상세 설치법과 선택 설정은 [`ha-card/README.md`](ha-card/README.md)를 참고하십시오. Home Assistant에서 기본 Entity ID를 직접 변경한 경우에는 자동 매핑되지 않습니다.
 

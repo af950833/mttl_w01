@@ -4,7 +4,7 @@
 
 A Docker-based local server for using the LG U+ `MTTL-W01` smart power strip on a private network without the manufacturer's cloud.
 
-![MTTL-W01 local server web dashboard](docs/dashboard-20260909.png)
+![MTTL-W01 local server web dashboard](docs/dashboard-20260911.png)
 
 Main features:
 
@@ -441,7 +441,13 @@ type: custom:mttl-w01-1-0-68-card
 mac: 97c0123
 ```
 
-![MTTL-W01 Home Assistant Lovelace card](ha-card/HA_card.png)
+Default card for `1.0.66`:
+
+![MTTL-W01 1.0.66 Home Assistant Lovelace card](ha-card/HA_card.png)
+
+Extended-sensor card for `1.0.68`:
+
+![MTTL-W01 1.0.68 Home Assistant Lovelace card](ha-card/HA_card_1.0.68.png)
 
 See [`ha-card/README.md`](ha-card/README.md) for installation details and optional settings. Automatic mapping will not work if the default Home Assistant Entity IDs have been changed manually.
 
