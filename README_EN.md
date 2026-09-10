@@ -449,7 +449,7 @@ Extended-sensor card for `1.0.68`:
 
 ![MTTL-W01 1.0.68 Home Assistant Lovelace card](ha-card/HA_card_1.0.68.png)
 
-See [`ha-card/README.md`](ha-card/README.md) for installation details and optional settings. Automatic mapping will not work if the default Home Assistant Entity IDs have been changed manually.
+See [`ha-card/README_EN.md`](ha-card/README_EN.md) for installation details and optional settings. Automatic mapping will not work if the default Home Assistant Entity IDs have been changed manually.
 
 ## 15. Automatic firmware update
 
