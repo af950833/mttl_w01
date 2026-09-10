@@ -1,6 +1,9 @@
 # MTTL-W01 Home Assistant Card
 
-MTTL-W01의 MAC 마지막 7자리만 입력하면 전체 및 4개 채널 스위치와 전력 센서를 자동으로 연결하는 Lovelace 카드입니다.
+MTTL-W01의 MAC 마지막 7자리만 입력하면 전체 및 4개 채널 스위치와 센서를 자동으로 연결하는 Lovelace 카드입니다.
+
+- `mttl-w01-card.js`: 순정 `1.0.66`용 기본 카드
+- `mttl-w01-1.0.68-card.js`: 확장 `1.0.68`용 카드. 전압·전체 전류와 채널별 누적 전력량·전류·온도를 추가로 표시합니다.
 
 ![MTTL-W01 Home Assistant Lovelace 카드](HA_card.png)
 
@@ -11,6 +14,8 @@ MTTL-W01의 MAC 마지막 7자리만 입력하면 전체 및 4개 채널 스위�
 3. `/local/mttl-w01-card.js`를 **JavaScript Module**로 등록합니다.
 4. 브라우저 캐시를 새로고침합니다.
 
+확장 `1.0.68` 카드는 `mttl-w01-1.0.68-card.js`를 복사하고 `/local/mttl-w01-1.0.68-card.js`를 별도 JavaScript Module로 등록합니다.
+
 카드를 추가하면 Home Assistant 비주얼 에디터에서 MAC 마지막 7자리, 선택 카드 이름과 모바일 4열 유지 옵션을 설정할 수 있습니다.
 
 채널 버튼을 짧게 누르면 해당 채널 전원이 전환되고, 약 0.6초 길게 누르면 해당 채널 전력 센서의 더보기 정보가 열립니다.
@@ -19,6 +24,13 @@ MTTL-W01의 MAC 마지막 7자리만 입력하면 전체 및 4개 채널 스위�
 
 ```yaml
 type: custom:mttl-w01-card
+mac: 97c0123
+```
+
+확장 `1.0.68` 카드:
+
+```yaml
+type: custom:mttl-w01-1-0-68-card
 mac: 97c0123
 ```
 

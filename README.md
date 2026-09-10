@@ -69,10 +69,10 @@ docker pull af950833/mttl-w01:latest
 특정 릴리스를 고정해서 사용하려면 `latest` 대신 버전 태그를 사용할 수 있습니다.
 
 ```bash
-docker pull af950833/mttl-w01:20260903
+docker pull af950833/mttl-w01:20260911
 ```
 
-고정 버전을 사용한다면 이후 명령의 `af950833/mttl-w01:latest`를 `af950833/mttl-w01:20260903` 형태로 바꾸십시오.
+고정 버전을 사용한다면 이후 명령의 `af950833/mttl-w01:latest`를 `af950833/mttl-w01:20260911` 형태로 바꾸십시오.
 
 ## 3. GitHub 소스로 직접 빌드
 
@@ -426,10 +426,17 @@ HA Link를 비활성화하면 MQTT Discovery 삭제 메시지가 발행됩니다
 
 ### MTTL-W01 Lovelace 카드
 
-[`ha-card/mttl-w01-card.js`](ha-card/mttl-w01-card.js)를 Home Assistant의 `/config/www/`에 복사하고 `/local/mttl-w01-card.js`를 JavaScript Module 리소스로 등록합니다. MAC 마지막 7자리만 입력하면 전체 전력, 누적 Meter, 전체 스위치와 4개 채널의 이름·현재 전력·스위치를 자동 배치합니다.
+순정 `1.0.66`용 [`ha-card/mttl-w01-card.js`](ha-card/mttl-w01-card.js)와 확장 `1.0.68`용 [`ha-card/mttl-w01-1.0.68-card.js`](ha-card/mttl-w01-1.0.68-card.js)를 제공합니다. `1.0.68` 카드는 전압·전체 전류와 채널별 누적 전력량·전류·온도를 2×2 채널 카드에 표시합니다. 사용할 파일을 Home Assistant의 `/config/www/`에 복사하고 JavaScript Module 리소스로 등록합니다.
 
 ```yaml
 type: custom:mttl-w01-card
+mac: 97c0123
+```
+
+확장 펌웨어용 카드:
+
+```yaml
+type: custom:mttl-w01-1-0-68-card
 mac: 97c0123
 ```
 
@@ -523,12 +530,19 @@ curl http://127.0.0.1:18833/api/health
 
 | 구성 요소 | 버전 |
 | --- | --- |
-| 로컬 서버 및 웹 대시보드 | `20260909` |
+| 로컬 서버 및 웹 대시보드 | `20260911` |
 | Android Provisioner | `0.3.2` (`versionCode 14`) |
 | 내장 MTTL-W01 펌웨어 | `1.0.66` |
-| 실행 시 생성되는 Direct-local 펌웨어 | `1.0.67` |
+| 실행 시 생성되는 Direct-local 펌웨어 | `1.0.68` |
 
 ## Version history
+
+### `20260911`
+
+- Direct-local `1.0.68` 펌웨어의 확장 상태값(전압·전류·채널별 누적량·온도) 지원
+- 대시보드에 확장 센서 표시, 오프라인 센서 표시 및 2×2 채널 카드 레이아웃 적용
+- Home Assistant MQTT Discovery에 확장 센서 추가
+- 기존 `1.0.66` 카드와 분리된 `mttl-w01-1.0.68-card.js` Lovelace 카드 추가
 
 ### `20260909`
 

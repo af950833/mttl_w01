@@ -14,9 +14,9 @@ DATA_DIR = os.getenv("MTTL_DATA_DIR", "/var/lib/mttl-probe")
 CERT_DIR = os.getenv("MTTL_CERT_DIR", DATA_DIR)
 AUTH_LOG = os.path.join(DATA_DIR, "latest-device-auth.json")
 PATCHED_OTA_CONFIG = os.path.join(DATA_DIR, "firmware-patch.json")
-PATCHED_OTA_FILE = os.path.join(DATA_DIR, "firmware-patch", "comMTTL-W01_1.0.67.fwr")
-PATCHED_OTA_NAME = "comMTTL-W01_1.0.67.fwr"
-PATCHED_OTA_PATH = f"/mef/firmware1.0.67/{PATCHED_OTA_NAME}"
+PATCHED_OTA_FILE = os.path.join(DATA_DIR, "firmware-patch", "comMTTL-W01_1.0.68.fwr")
+PATCHED_OTA_NAME = "comMTTL-W01_1.0.68.fwr"
+PATCHED_OTA_PATH = f"/mef/firmware1.0.68/{PATCHED_OTA_NAME}"
 LOCAL_AUTH_FLAG = os.path.join(DATA_DIR, "enable-local-auth")
 LOCAL_AUTH_LOG = os.path.join(DATA_DIR, "latest-local-auth.json")
 PENDING_PREFIX = os.path.join(DATA_DIR, "pending-enrollment-")
@@ -172,7 +172,7 @@ class Handler(BaseHTTPRequestHandler):
         current = path[len(prefix):].strip("/")
         current_version = self._version(current)
         patched = self._patched_ota_enabled()
-        target = "1.0.67" if patched else STABLE_OTA_VERSION
+        target = "1.0.68" if patched else STABLE_OTA_VERSION
         target_name = PATCHED_OTA_NAME if patched else STABLE_OTA_NAME
         target_version = self._version(target)
         if current_version is None or current_version == target_version:

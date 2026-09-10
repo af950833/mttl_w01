@@ -504,9 +504,10 @@ class MQTTServer:
         except (KeyError, ValueError, TypeError, json.JSONDecodeError):
             return
         content = report.get("content", {})
-        parameters = content.get("cmd_report", {}).get("parameters")
+        cmd_report = content.get("cmd_report", {})
+        parameters = cmd_report.get("parameters")
         if parameters:
-            self._status(session, parameters, report)
+            self._status(session, parameters, report, cmd_report)
         notification = content.get("notification", {})
         if notification.get("parameters"):
             self._events(session, notification["parameters"])
@@ -528,7 +529,28 @@ class MQTTServer:
         except (TypeError, ValueError):
             return None
 
-    def _status(self, session, parameters, report):
+    @staticmethod
+    def _hex_value(raw, scale=1, signed=False):
+        try:
+            value = int(raw, 16)
+            bits = len(raw) * 4
+            if signed and bits and value & (1 << (bits - 1)):
+                value -= 1 << bits
+            return round(value / scale, 3)
+        except (TypeError, ValueError):
+            return None
+
+    @classmethod
+    def _hex_values(cls, raw, count, scale=1, signed=False):
+        if not isinstance(raw, str):
+            return None
+        parts = raw.split(",")
+        if len(parts) != count or any(not (1 <= len(part) <= 8) for part in parts):
+            return None
+        values = [cls._hex_value(part, scale, signed) for part in parts]
+        return values if all(value is not None for value in values) else None
+
+    def _status(self, session, parameters, report, cmd_report=None):
         state = self.store.read("state", session.mac, {"channels": [{}, {}, {}, {}]})
         state.setdefault("channels", [{}, {}, {}, {}])
         for item in parameters:
@@ -548,11 +570,67 @@ class MQTTServer:
                     })
             elif command == "METER_ACC_STATUS_REPORT":
                 self._energy(session, item)
+        self._extended_status(state, cmd_report or {})
         state.update({"online": True, "last_seen": datetime.now().astimezone().isoformat()})
         self.store.write("state", session.mac, state)
         self.on_change()
         self._confirm_commands(session.mac, state, status_report=True)
         self.store.append_event({"mac": session.mac, "kind": "status", "state": state})
+
+    def _extended_status(self, state, report):
+        voltage_raw = report.get("v")
+        voltage = self._hex_value(voltage_raw, 10 if isinstance(voltage_raw, str) and len(voltage_raw) == 3 else 1000)
+        current_report = report.get("i") or report.get("c")
+        currents = self._hex_values(current_report, 5, 1000)
+        if currents is None:
+            currents = self._hex_values(current_report, 4, 1000)
+        if currents is None:
+            currents = self._hex_values(current_report, 1, 1000)
+        meters = self._hex_values(report.get("w") or report.get("e"), 5, 1000)
+        if meters is None:
+            meters = self._hex_values(report.get("w") or report.get("e"), 4, 1000)
+        temperatures = self._hex_values(report.get("t"), 4, signed=True)
+        has_extension = any(value is not None for value in (voltage, currents, meters, temperatures))
+
+        if not has_extension:
+            state.pop("extended", None)
+            for channel in state["channels"]:
+                for key in ("current_a", "meter_kwh", "temperature_c"):
+                    channel.pop(key, None)
+            return
+
+        extended = {
+            "updated_at": datetime.now().astimezone().isoformat(),
+            "raw": {key: report[key] for key in ("v", "i", "c", "w", "t", "p", "e") if key in report},
+        }
+        if voltage is not None:
+            extended["voltage_v"] = round(voltage, 1)
+        if currents is not None:
+            if len(currents) > 4:
+                extended["raw_total_current_a"] = currents[4]
+            displayed_currents = []
+            for index in range(min(4, len(currents))):
+                displayed = round(max(currents[index] - 0.019, 0.0), 3) if state["channels"][index].get("on") else 0.0
+                state["channels"][index]["current_a"] = displayed
+                displayed_currents.append(displayed)
+            extended["total_current_a"] = round(sum(displayed_currents), 3)
+        else:
+            for channel in state["channels"]:
+                channel.pop("current_a", None)
+        if meters is not None:
+            extended["total_meter_kwh"] = meters[4] if len(meters) > 4 else round(sum(meters), 3)
+            for index in range(4):
+                state["channels"][index]["meter_kwh"] = meters[index]
+        else:
+            for channel in state["channels"]:
+                channel.pop("meter_kwh", None)
+        if temperatures is not None:
+            for index in range(4):
+                state["channels"][index]["temperature_c"] = temperatures[index]
+        else:
+            for channel in state["channels"]:
+                channel.pop("temperature_c", None)
+        state["extended"] = extended
 
     def _events(self, session, parameters):
         state = self.store.read("state", session.mac, {"channels": [{}, {}, {}, {}]})

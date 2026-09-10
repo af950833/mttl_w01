@@ -18,6 +18,7 @@ class HAMQTTBridge:
         self.connected = False
         self.error = ""
         self.last_states = {}
+        self.last_capabilities = {}
         self.config = self._read_config()
         self.last_connected = self._read_last_connected()
 
@@ -163,6 +164,22 @@ class HAMQTTBridge:
             entities.append(("sensor", object_id, {"name": name, "state_topic": f"{base}/state", "value_template": "{{ value_json.%s }}" % suffix, "unit_of_measurement": "W", "device_class": "power", "state_class": "measurement"}))
         meter_id = f"mttl_{mac7}_meter"
         entities.append(("sensor", meter_id, {"name": "Meter", "state_topic": f"{base}/state", "value_template": "{{ value_json.meter }}", "unit_of_measurement": "kWh", "device_class": "energy", "state_class": "total_increasing"}))
+        extended = device.get("state", {}).get("extended", {})
+        extended_entities = []
+        if "voltage_v" in extended:
+            extended_entities.append(("voltage", "Voltage", "V", "voltage", "measurement"))
+        if "total_current_a" in extended:
+            extended_entities.append(("current", "Current", "A", "current", "measurement"))
+        for number in range(1, 5):
+            channel = device.get("state", {}).get("channels", [{}] * 4)[number - 1]
+            channel_name = device["channels"][number - 1]
+            display = f"SW {number}" if channel_name == str(number) else channel_name
+            if "meter_kwh" in channel:
+                extended_entities.append((f"meter{number}", f"{display} Meter", "kWh", "energy", "total_increasing"))
+            if "current_a" in channel:
+                extended_entities.append((f"current{number}", f"{display} Current", "A", "current", "measurement"))
+            if "temperature_c" in channel:
+                extended_entities.append((f"temperature{number}", f"{display} Temperature", "°C", "temperature", "measurement"))
         legacy_topic = f"{discovery}/sensor/mttl_{mac7}_today_usage/config"
         self._publish(legacy_topic, "")
         for component, object_id, config in entities:
@@ -170,7 +187,32 @@ class HAMQTTBridge:
             if remove:
                 self._publish(topic, "")
                 continue
-            config.update({"object_id": object_id, "unique_id": object_id, "default_entity_id": f"{component}.{object_id}", "device": device_info, "availability_topic": f"{base}/availability"})
+            if component == "sensor":
+                config["suggested_display_precision"] = 3 if config.get("device_class") == "energy" else 2
+            config.update({"object_id": object_id, "unique_id": object_id, "default_entity_id": f"{component}.{object_id}", "device": device_info, "availability_topic": f"{base}/availability", "enabled_by_default": True})
+            self._publish(topic, json.dumps(config, separators=(",", ":")))
+        active_extended = {item[0]: item for item in extended_entities}
+        for suffix in ("voltage", "current", *(f"meter{i}" for i in range(1, 5)),
+                       *(f"current{i}" for i in range(1, 5)), *(f"temperature{i}" for i in range(1, 5))):
+            object_id = f"mttl_{mac7}_{suffix}"
+            topic = f"{discovery}/sensor/{object_id}/config"
+            item = active_extended.get(suffix)
+            if remove or item is None:
+                self._publish(topic, "")
+                continue
+            _, name, unit, device_class, state_class = item
+            config = {
+                "name": name, "state_topic": f"{base}/state",
+                "value_template": "{{ value_json.%s }}" % suffix,
+                "unit_of_measurement": unit, "device_class": device_class,
+                "state_class": state_class, "object_id": object_id,
+                "unique_id": object_id, "default_entity_id": f"sensor.{object_id}",
+                "device": device_info, "availability_topic": f"{base}/availability",
+                "enabled_by_default": True,
+            }
+            config["suggested_display_precision"] = {
+                "voltage": 1, "current": 3, "energy": 3, "temperature": 0,
+            }[device_class]
             self._publish(topic, json.dumps(config, separators=(",", ":")))
 
     def publish_state(self, device, force=False):
@@ -182,10 +224,24 @@ class HAMQTTBridge:
             "powerall": state.get("power_w", 0),
             "meter": device.get("energy", {}).get("meter_kwh", device.get("energy", {}).get("today_kwh")),
         }
+        extended = state.get("extended", {})
+        if "voltage_v" in extended:
+            payload["voltage"] = extended["voltage_v"]
+        if "total_current_a" in extended:
+            payload["current"] = extended["total_current_a"]
         for number in range(1, 5):
             channel = channels[number - 1] if len(channels) >= number else {}
             payload[f"sw{number}"] = "ON" if channel.get("on") else "OFF"
             payload[f"power{number}"] = channel.get("power_w", 0)
+            for source, target in (("meter_kwh", f"meter{number}"),
+                                   ("current_a", f"current{number}"),
+                                   ("temperature_c", f"temperature{number}")):
+                if source in channel:
+                    payload[target] = channel[source]
+        capabilities = tuple(sorted(key for key in payload if key.startswith(("voltage", "current", "meter", "temperature")) and key != "meter"))
+        if self.last_capabilities.get(device["mac"]) != capabilities:
+            self.publish_discovery(device)
+            self.last_capabilities[device["mac"]] = capabilities
         encoded = json.dumps(payload, separators=(",", ":"))
         if force or self.last_states.get(device["mac"]) != encoded:
             self._publish(f"{self.config['topic_prefix']}/{mac7}/state", encoded)

@@ -69,10 +69,10 @@ docker pull af950833/mttl-w01:latest
 Use the versioned tag instead of `latest` to pin a specific release.
 
 ```bash
-docker pull af950833/mttl-w01:20260903
+docker pull af950833/mttl-w01:20260911
 ```
 
-When pinning this release, replace `af950833/mttl-w01:latest` with `af950833/mttl-w01:20260903` in the remaining commands.
+When pinning this release, replace `af950833/mttl-w01:latest` with `af950833/mttl-w01:20260911` in the remaining commands.
 
 ## 3. Build from the GitHub source
 
@@ -426,10 +426,17 @@ Disabling HA Link publishes MQTT Discovery deletion messages. If Home Assistant 
 
 ### MTTL-W01 Lovelace card
 
-Copy [`ha-card/mttl-w01-card.js`](ha-card/mttl-w01-card.js) to Home Assistant's `/config/www/` directory and register `/local/mttl-w01-card.js` as a JavaScript Module resource. Enter only the final seven MAC characters to automatically arrange total power, the cumulative Meter, the master switch, and four channel buttons with names and live power.
+Two cards are provided: [`ha-card/mttl-w01-card.js`](ha-card/mttl-w01-card.js) for stock `1.0.66`, and [`ha-card/mttl-w01-1.0.68-card.js`](ha-card/mttl-w01-1.0.68-card.js) for extended `1.0.68`. The `1.0.68` card displays voltage, total current, and per-channel energy, current, and temperature in a 2×2 channel layout. Copy the appropriate file to Home Assistant's `/config/www/` directory and register it as a JavaScript Module resource.
 
 ```yaml
 type: custom:mttl-w01-card
+mac: 97c0123
+```
+
+Extended-firmware card:
+
+```yaml
+type: custom:mttl-w01-1-0-68-card
 mac: 97c0123
 ```
 
@@ -523,12 +530,19 @@ If the log contains `missing certificate files`, verify the files and mount path
 
 | Component | Version |
 | --- | --- |
-| Local server and web dashboard | `20260909` |
+| Local server and web dashboard | `20260911` |
 | Android Provisioner | `0.3.2` (`versionCode 14`) |
 | Bundled MTTL-W01 firmware | `1.0.66` |
-| Direct-local firmware generated at runtime | `1.0.67` |
+| Direct-local firmware generated at runtime | `1.0.68` |
 
 ## Version history
+
+### `20260911`
+
+- Added extended status values from Direct-local firmware `1.0.68`: voltage, current, per-channel energy, and temperature
+- Added extended dashboard sensors, offline sensor rendering, and a 2×2 channel-card layout
+- Added extended sensors to Home Assistant MQTT Discovery
+- Added the separate `mttl-w01-1.0.68-card.js` Lovelace card while retaining the stock `1.0.66` card
 
 ### `20260909`
 

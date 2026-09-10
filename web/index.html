@@ -20,10 +20,17 @@
     .toggle{position:relative;width:42px;height:24px;display:inline-block}.toggle input{opacity:0;width:0;height:0}.slider{position:absolute;inset:0;background:#cbd5e1;border-radius:24px;cursor:pointer;transition:.2s}.slider:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:white;border-radius:50%;transition:.2s}.toggle input:checked+.slider{background:#22c55e}.toggle input:checked+.slider:before{transform:translateX(18px)}
     @media(max-width:1100px){.ha-mqtt .settings{grid-template-columns:minmax(0,1fr) 90px}.ha-mqtt .settings .prefix-field{grid-column:span 1}.ha-mqtt .settings .credential-field{grid-column:span 2}}@media(max-width:900px){.setup-grid,.top-grid{grid-template-columns:1fr}}@media(max-width:520px){.firmware-controls{align-items:flex-start;flex-direction:column}.firmware-ip{width:100%}}
     @media(min-width:1601px){main{grid-template-columns:repeat(4,minmax(0,1fr))}}
+    .outlets{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .outlets .channel-card{display:flex;flex-direction:column;align-items:stretch;gap:9px;min-width:0;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px}
+    .outlets .channel-card .channel-title{display:flex;align-items:center;gap:7px;min-width:0;padding:0;background:transparent;border-radius:0}.channel-title b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.channel-title .icon-button{flex:0 0 auto}
+    .channel-readings{display:flex;flex-direction:column;gap:4px;color:#64748b;font-size:12px}.channel-reading{display:flex;justify-content:space-between;gap:10px}.channel-reading strong{color:#172033;font-size:13px;font-weight:600;text-align:right;white-space:nowrap}
+    .channel-card>button:last-child{width:100%;margin-top:auto}
+    .device-controls{justify-content:center}
+    @media(max-width:600px){.outlets{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.outlets .channel-card{padding:10px}.channel-reading{gap:5px}}
   </style>
 </head>
 <body>
-  <header><h1>MTTL-W01</h1><div class="header-tools"><span id="health">Connecting</span><small class="server-version">Ver : 20260909</small></div></header>
+  <header><h1>MTTL-W01</h1><div class="header-tools"><span id="health">Connecting</span><small class="server-version">Ver : 20260911</small></div></header>
   <div class="setup-grid">
   <section class="app-download">
     <div><h2>Android Provisioning App</h2><p>Scan on a phone connected to this LAN, or use the direct download link.</p><a class="app-download-button" href="/downloads/MTTL-W01-Provisioner.apk" download>Download MTTL-W01 Provisioner</a></div>
@@ -41,7 +48,7 @@
     <div id="fwPatchMeta" class="firmware-meta">Checking firmware status.</div>
     <div class="firmware-downloads">
       <a class="app-download-button" href="/api/firmware-patch/original" download>Download comMTTL-W01_1.0.66.fwr (LG U+ original F/W)</a>
-      <a id="fwPatchDownload" class="app-download-button disabled" aria-disabled="true">Download comMTTL-W01_1.0.67.fwr (Local patched F/W)</a>
+      <a id="fwPatchDownload" class="app-download-button disabled" aria-disabled="true">Download comMTTL-W01_1.0.68.fwr (Local patched F/W)</a>
     </div>
     <div class="softap-note">If DNAT is unavailable, install the patched firmware once with the OTA Tool (<a href="https://github.com/ttaengz/mttl-w01-matterbridge" target="_blank" rel="noopener noreferrer">ttaengz's GitHub</a>).
       <div class="softap-downloads"><a href="https://github.com/ttaengz/mttl-w01-matterbridge/raw/refs/heads/main/tools/ota_gui_windows.exe">Download for Windows</a><a href="https://github.com/ttaengz/mttl-w01-matterbridge/raw/refs/heads/main/tools/ota_gui_macos.zip">Download for macOS</a></div>
@@ -86,14 +93,14 @@
         deviceCache = new Map(devices.map(device => [device.mac, device]));
         health.textContent = 'Server Online';
         if (!devices.length) { document.querySelector('#devices').innerHTML='<p class="empty">Waiting for an MTTL-W01 device.</p>'; return; }
-        document.querySelector('#devices').innerHTML = devices.map(d => `
+        document.querySelector('#devices').innerHTML = devices.map(d => { const online=!!d.state?.online; return `
           <article class="card">
             <div class="title"><div class="device-heading"><div class="name-row"><h2>${esc(d.name)}</h2><button class="icon-button" title="Edit device name" onclick="editDeviceName('${d.mac}')">✎</button></div><span class="fw-version">(FW Ver : ${esc(d.firmware?.version ?? 'Unknown')})</span></div><span class="dot ${d.state?.online?'on':''}"></span></div>
-            <dl><dt>Current Power</dt><dd>${esc(d.state?.power_w ?? '0')} W</dd><dt>Meter</dt><dd>${(d.energy?.meter_kwh ?? d.energy?.today_kwh) == null ? '—' : `${esc(d.energy?.meter_kwh ?? d.energy?.today_kwh)} kWh`}</dd><dt>RSSI</dt><dd>${d.state?.online ? `${esc(d.state?.rssi ?? '-')} dBm` : '- dBm'}</dd></dl>
-            <div class="bulk"><button onclick="control('${d.mac}','main/on')">All ON</button><button onclick="control('${d.mac}','main/off')">All OFF</button><button onclick="control('${d.mac}','refresh')">Refresh</button></div>
-            <div class="outlets">${[1,2,3,4].map((n,i)=>`<div><button class="icon-button" title="Edit channel name" onclick="editChannelName('${d.mac}',${i})">✎</button><b>${esc(d.channels?.[i] ?? n)}</b><span>${esc(d.state?.channels?.[i]?.power_w ?? '0')} W</span><button class="${d.state?.channels?.[i]?.on?'active':''}" onclick="control('${d.mac}','channels/${n}/${d.state?.channels?.[i]?.on?'off':'on'}')">${d.state?.channels?.[i]?.on?'ON':'OFF'}</button></div>`).join('')}</div>
+            <dl><dt>Total Power</dt><dd>${online?esc(d.state?.power_w ?? '0'):'-'} W</dd><dt>Meter</dt><dd>${online?esc(d.energy?.meter_kwh ?? d.energy?.today_kwh ?? '-'):'-'} kWh</dd>${d.state?.extended?.voltage_v!=null?`<dt>Voltage</dt><dd>${online?esc(d.state.extended.voltage_v):'-'} V</dd>`:''}${d.state?.extended?.total_current_a!=null?`<dt>Total Current</dt><dd>${online?esc(d.state.extended.total_current_a):'-'} A</dd>`:''}<dt>RSSI</dt><dd>${online?esc(d.state?.rssi ?? '-'):'-'} dBm</dd></dl>
+            <div class="bulk device-controls"><button onclick="control('${d.mac}','main/on')">All ON</button><button onclick="control('${d.mac}','main/off')">All OFF</button></div>
+            <div class="outlets">${[1,2,3,4].map((n,i)=>{const ch=d.state?.channels?.[i]??{};return `<div class="channel-card"><div class="channel-title"><button class="icon-button" title="Edit channel name" onclick="editChannelName('${d.mac}',${i})">✎</button><b>${esc(d.channels?.[i] ?? n)}</b></div><span class="channel-readings"><span class="channel-reading"><span>Power</span><strong>${online?esc(ch.power_w ?? '0'):'-'} W</strong></span>${ch.meter_kwh!=null?`<span class="channel-reading"><span>Meter</span><strong>${online?esc(ch.meter_kwh):'-'} kWh</strong></span>`:''}${ch.current_a!=null?`<span class="channel-reading"><span>Current</span><strong>${online?esc(ch.current_a):'-'} A</strong></span>`:''}${ch.temperature_c!=null?`<span class="channel-reading"><span>Temperature</span><strong>${online?esc(ch.temperature_c):'-'} °C</strong></span>`:''}</span><button class="${ch.on?'active':''}" onclick="control('${d.mac}','channels/${n}/${ch.on?'off':'on'}')">${ch.on?'ON':'OFF'}</button></div>`}).join('')}</div>
             <div class="card-tools"><label class="ha-link">HA Link <span class="toggle"><input type="checkbox" ${d.ha_link?'checked':''} onchange="setHaLink('${d.mac}',this.checked)"><span class="slider"></span></span></label><button class="danger" onclick="deleteDevice('${d.mac}')">Delete Device</button></div>
-          </article>`).join('');
+          </article>`}).join('');
       } catch (_) { health.textContent = 'Server Error'; }
     }
     async function control(mac, action) {
@@ -141,7 +148,7 @@
         fwPatchState.textContent=state.enabled?(state.ready?'Enabled':'Build Error'):'Disabled';
         fwPatchState.className=`badge ${state.enabled&&state.ready?'on':''}`;
         fwPatchMeta.className=`firmware-meta ${state.ready?'ok':''}`;
-        fwPatchMeta.innerHTML=state.ready?`FW 1.0.67 · Server ${esc(state.server_ip)} · Cert ${esc(state.certificate_port)} · MEF ${esc(state.mef_port)} · MQTT ${esc(state.mqtt_port)} · QMS ${esc(state.qms_port)}<br>SHA-256 ${esc(state.sha256)}`:'No patched firmware has been prepared.';
+        fwPatchMeta.innerHTML=state.ready?`FW 1.0.68 · Server ${esc(state.server_ip)} · Cert ${esc(state.certificate_port)} · MEF ${esc(state.mef_port)} · MQTT ${esc(state.mqtt_port)} · QMS ${esc(state.qms_port)}<br>SHA-256 ${esc(state.sha256)}`:'No patched firmware has been prepared.';
         const downloadable=state.enabled&&state.ready;
         fwPatchDownload.classList.toggle('disabled',!downloadable);
         fwPatchDownload.setAttribute('aria-disabled',downloadable?'false':'true');
