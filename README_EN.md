@@ -546,7 +546,7 @@ If the log contains `missing certificate files`, verify the files and mount path
 
 ### `20260911`
 
-- Added extended status values from Direct-local firmware `1.0.68`: voltage, current, per-channel energy, and temperature
+- Added Direct-local firmware `1.0.68` extended status values—total voltage and current plus per-channel energy, current, and temperature—and exposed them as Home Assistant entities
 - Added extended dashboard sensors, offline sensor rendering, and a 2×2 channel-card layout
 - Added extended sensors to Home Assistant MQTT Discovery
 - Added the separate `mttl-w01-1.0.68-card.js` Lovelace card while retaining the stock `1.0.66` card
