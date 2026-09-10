@@ -42,6 +42,7 @@ Extended `1.0.68` card:
 ```yaml
 type: custom:mttl-w01-1-0-68-card
 mac: 97c0123
+mobile_two_rows: true
 ```
 
 Optional settings for the default card:
@@ -58,5 +59,6 @@ compact: false
 - `channel_names`: optional list of four custom channel names.
 - `channel_icons`: optional list of four Material Design icon names.
 - `compact`: on the `1.0.66` card, set this to `true` to keep all four channels in one row on narrow screens. The default mobile layout is 2×2.
+- `mobile_two_rows`: on the `1.0.68` card, set this to `true` to retain a two-column, two-row channel layout on mobile. The default mobile layout is one column.
 
 The default Entity IDs must remain unchanged. For example, a device whose final seven MAC characters are `97C0123` uses `switch.mttl_97c0123_sw1` and `sensor.mttl_97c0123_power1`. Automatic mapping will not work if these Entity IDs have been changed manually in Home Assistant.

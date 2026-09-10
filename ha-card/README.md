@@ -40,6 +40,7 @@ mac: 97c0123
 ```yaml
 type: custom:mttl-w01-1-0-68-card
 mac: 97c0123
+mobile_two_rows: true
 ```
 
 선택 설정:
@@ -54,5 +55,6 @@ compact: false
 - `mac`: MAC 주소의 마지막 7자리. 구분자와 대소문자는 자동으로 정리됩니다.
 - `name`: 카드 제목을 직접 지정합니다. 생략하면 `MTTL XXXXXXX`를 표시합니다.
 - `compact`: `true`이면 좁은 화면에서도 채널 4개를 한 줄로 유지합니다. 기본값은 모바일에서 2×2입니다.
+- `mobile_two_rows`: `1.0.68` 카드에서 `true`이면 모바일에서도 채널을 2열×2행으로 유지합니다. 기본값은 모바일 1열입니다.
 
 카드는 기본 Entity ID가 유지되어 있어야 합니다. 예를 들어 MAC 마지막 7자리가 `97C0123`이면 `switch.mttl_97c0123_sw1`과 `sensor.mttl_97c0123_power1` 형식을 사용합니다. Home Assistant에서 Entity ID를 직접 변경했다면 자동 매핑되지 않습니다.
