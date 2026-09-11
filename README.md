@@ -447,7 +447,7 @@ sensor.mttl_97c0123_temperature3
 sensor.mttl_97c0123_temperature4
 ```
 
-`voltage`와 `current`는 멀티탭 전체 전압·전류이고, `meter1`~`meter4`, `current1`~`current4`, `temperature1`~`temperature4`는 각 채널의 누적 전력량·전류·온도입니다. 순정 `1.0.66`에서는 이 확장 센서가 생성되지 않습니다.
+`voltage`와 `current`는 멀티탭 전체 전압·전류이고, `meter1`–`meter4`, `current1`–`current4`, `temperature1`–`temperature4`는 각 채널의 누적 전력량·전류·온도입니다. 순정 `1.0.66`에서는 이 확장 센서가 생성되지 않습니다.
 
 전체 스위치 표시 이름은 `SW All`, 누적 전력량 센서는 `Meter`입니다. 온라인 여부는 별도 센서가 아니라 각 엔티티의 MQTT availability로 전달됩니다.
 
