@@ -425,6 +425,30 @@ sensor.mttl_97c0123_power4
 sensor.mttl_97c0123_meter
 ```
 
+When Direct-local patched firmware `1.0.68` reports its extended status values, MQTT Discovery creates these additional sensors:
+
+```text
+sensor.mttl_97c0123_voltage
+sensor.mttl_97c0123_current
+
+sensor.mttl_97c0123_meter1
+sensor.mttl_97c0123_meter2
+sensor.mttl_97c0123_meter3
+sensor.mttl_97c0123_meter4
+
+sensor.mttl_97c0123_current1
+sensor.mttl_97c0123_current2
+sensor.mttl_97c0123_current3
+sensor.mttl_97c0123_current4
+
+sensor.mttl_97c0123_temperature1
+sensor.mttl_97c0123_temperature2
+sensor.mttl_97c0123_temperature3
+sensor.mttl_97c0123_temperature4
+```
+
+`voltage` and `current` represent total power-strip voltage and current. `meter1`–`meter4`, `current1`–`current4`, and `temperature1`–`temperature4` represent per-channel cumulative energy, current, and temperature. These extended sensors are not created for stock firmware `1.0.66`.
+
 The master switch is displayed as `SW All`, and the cumulative energy sensor is displayed as `Meter`. Online status is sent through MQTT availability for each entity instead of a separate sensor.
 
 Disabling HA Link publishes MQTT Discovery deletion messages. If Home Assistant is stopped, it may not process them immediately. Disable HA Link while Home Assistant and the broker are running.

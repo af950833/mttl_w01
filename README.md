@@ -425,6 +425,30 @@ sensor.mttl_97c0123_power4
 sensor.mttl_97c0123_meter
 ```
 
+Direct-local `1.0.68` 패치 펌웨어가 확장 상태값을 보고하면 MQTT Discovery가 다음 센서를 추가로 생성합니다.
+
+```text
+sensor.mttl_97c0123_voltage
+sensor.mttl_97c0123_current
+
+sensor.mttl_97c0123_meter1
+sensor.mttl_97c0123_meter2
+sensor.mttl_97c0123_meter3
+sensor.mttl_97c0123_meter4
+
+sensor.mttl_97c0123_current1
+sensor.mttl_97c0123_current2
+sensor.mttl_97c0123_current3
+sensor.mttl_97c0123_current4
+
+sensor.mttl_97c0123_temperature1
+sensor.mttl_97c0123_temperature2
+sensor.mttl_97c0123_temperature3
+sensor.mttl_97c0123_temperature4
+```
+
+`voltage`와 `current`는 멀티탭 전체 전압·전류이고, `meter1`~`meter4`, `current1`~`current4`, `temperature1`~`temperature4`는 각 채널의 누적 전력량·전류·온도입니다. 순정 `1.0.66`에서는 이 확장 센서가 생성되지 않습니다.
+
 전체 스위치 표시 이름은 `SW All`, 누적 전력량 센서는 `Meter`입니다. 온라인 여부는 별도 센서가 아니라 각 엔티티의 MQTT availability로 전달됩니다.
 
 HA Link를 비활성화하면 MQTT Discovery 삭제 메시지가 발행됩니다. Home Assistant가 중지된 상태에서는 삭제를 즉시 처리하지 못할 수 있으므로 HA와 Broker가 실행 중일 때 비활성화하는 것이 좋습니다.
