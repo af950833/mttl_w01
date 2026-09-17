@@ -133,7 +133,7 @@ docker run -d \
   --restart unless-stopped \
   --network host \
   -v /srv/mttl/data:/data \
-  -v /srv/mttl/certs:/certs:ro \
+  -v /srv/mttl/certs:/certs \
   af950833/mttl-w01:latest
 ```
 
@@ -207,7 +207,7 @@ docker run -d \
   --restart unless-stopped \
   --network host \
   -v /srv/mttl/data:/data \
-  -v /srv/mttl/certs:/certs:ro \
+  -v /srv/mttl/certs:/certs \
   af950833/mttl-w01:latest
 ```
 
