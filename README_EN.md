@@ -70,10 +70,10 @@ docker pull af950833/mttl-w01:latest
 Use the versioned tag instead of `latest` to pin a specific release.
 
 ```bash
-docker pull af950833/mttl-w01:20260911
+docker pull af950833/mttl-w01:20261001
 ```
 
-When pinning this release, replace `af950833/mttl-w01:latest` with `af950833/mttl-w01:20260911` in the remaining commands.
+When pinning this release, replace `af950833/mttl-w01:latest` with `af950833/mttl-w01:20261001` in the remaining commands.
 
 ## 3. Build from the GitHub source
 
@@ -565,12 +565,22 @@ If the log contains `missing certificate files`, verify the files and mount path
 
 | Component | Version |
 | --- | --- |
-| Local server and web dashboard | `20260911` |
+| Local server and web dashboard | `20261001` |
 | Android Provisioner | `0.3.2` (`versionCode 14`) |
 | Bundled MTTL-W01 firmware | `1.0.66` |
 | Direct-local firmware generated at runtime | `1.0.68` |
 
 ## Version history
+
+### `20261001`
+
+- Merged PR #3 and hardened Home Assistant MQTT connection restarts
+- Serialized old-client teardown and new-client startup to prevent concurrent restart races
+- Ignore stale connect, disconnect, and message callbacks from replaced clients
+- Serialize configuration saves, prevent duplicate startup, and improve cleanup and retries after startup failures
+- Set reconnect delays to 1–30 seconds and remove the fixed teardown sleep
+- Added 12 tests covering concurrent restarts, configuration saves, failures, and real Paho loopback connections
+- Direct-local firmware remains `1.0.68`; this release does not require device reprovisioning
 
 ### `20260911`
 

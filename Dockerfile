@@ -1,6 +1,7 @@
 FROM python:3.12-slim
 
 LABEL org.opencontainers.image.title="MTTL-W01 Local Server" \
+      org.opencontainers.image.version="20261001" \
       org.opencontainers.image.description="Local MEF, TLS MQTT, QMS, dashboard, and Home Assistant bridge for LG U+ MTTL-W01" \
       org.opencontainers.image.source="https://github.com/af950833/mttl_w01"
 
