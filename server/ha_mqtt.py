@@ -14,6 +14,10 @@ class HAMQTTBridge:
         self.path = Path(store.root) / "ha_mqtt.json"
         self.status_path = Path(store.root) / "ha_mqtt_status.json"
         self.lock = threading.RLock()
+        # Separate lifecycle lock: loop_stop() joins a thread whose callbacks
+        # need self.lock, so never hold self.lock while stopping a client.
+        self._restart_lock = threading.RLock()
+        self._started = False
         self.client = None
         self.connected = False
         self.error = ""
@@ -43,6 +47,10 @@ class HAMQTTBridge:
             return value
 
     def save_config(self, value):
+        with self._restart_lock:
+            return self._save_config(value)
+
+    def _save_config(self, value):
         host = str(value.get("host", "")).strip()
         port = int(value.get("port", 1883))
         if not 1 <= port <= 65535:
@@ -65,17 +73,16 @@ class HAMQTTBridge:
 
     def start(self):
         with self.lock:
-            if getattr(self, "_started", False):
+            if self._started:
                 return
             self._started = True
-            self._generation = getattr(self, "_generation", 0)
         threading.Thread(target=self._publisher, daemon=True, name="ha-mqtt-publisher").start()
         self.restart()
 
     @staticmethod
     def _rc_value(reason_code):
-        # paho-mqtt v2 passes a ReasonCode object, v1 passes an int.
-        # `ReasonCode(0) != 0` is True, so normalise before comparing.
+        # Explicit numeric representation for callback status handling.
+        # Paho 2.1.0 ReasonCode already supports comparison with integers.
         try:
             if hasattr(reason_code, "value"):
                 return int(reason_code.value)
@@ -84,77 +91,69 @@ class HAMQTTBridge:
             return reason_code
 
     def restart(self):
-        # Single-flight: two overlapping restarts (double-click "Save &
-        # Connect", concurrent API calls) must never leave two live clients
-        # with the same hardcoded client_id. The generation guard ensures only
-        # the newest restart owns self.client.
+        # Serialize teardown AND startup, including connect_async/loop_start.
+        with self._restart_lock:
+            self._restart()
+
+    @staticmethod
+    def _stop_client(client):
+        client.on_connect = None
+        client.on_disconnect = None
+        client.on_message = None
+        try:
+            client.disconnect()
+        finally:
+            # Paho joins the network thread; no fixed sleep is needed.
+            client.loop_stop()
+
+    def _restart(self):
         with self.lock:
-            self._generation = getattr(self, "_generation", 0) + 1
-            gen = self._generation
             old = self.client
             self.client = None
             self.connected = False
             self.error = ""
-        if old is not None:
-            # BUGFIX: order was loop_stop() then disconnect(). loop_stop()
-            # kills the network loop, so the queued DISCONNECT never reaches
-            # the broker — the old session stays alive broker-side until the
-            # keepalive timeout, and the new CONNECT with the SAME client_id
-            # looks like a "redundant duplicate" and is rejected/takes over.
-            # Correct order: silence callbacks, disconnect, let the loop flush,
-            # then stop the loop.
-            try:
-                old.on_connect = None
-                old.on_disconnect = None
-                old.on_message = None
-            except Exception:
-                pass
-            try:
-                old.disconnect()
-            except Exception:
-                pass
-            try:
-                time.sleep(0.3)
-            except Exception:
-                pass
-            try:
-                old.loop_stop()
-            except Exception:
-                pass
-        with self.lock:
-            if gen != getattr(self, "_generation", gen):
-                return  # a newer restart superseded us; don't create a client
-            host = self.config.get("host")
-        if not host:
-            return
+            config = self.config.copy()
+        client = None
         try:
+            if old is not None:
+                self._stop_client(old)
+            if not config.get("host"):
+                return
             client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="mttl-local-bridge", clean_session=True)
-            try:
-                client.reconnect_delay_set(min_delay=1, max_delay=30)
-            except Exception:
-                pass
-            if self.config.get("username"):
-                client.username_pw_set(self.config["username"], self.config.get("password", ""))
+            client.reconnect_delay_set(min_delay=1, max_delay=30)
+            if config.get("username"):
+                client.username_pw_set(config["username"], config.get("password", ""))
             client.on_connect = self._on_connect
             client.on_disconnect = self._on_disconnect
             client.on_message = self._on_message
             with self.lock:
-                if gen != getattr(self, "_generation", gen):
-                    return
                 self.client = client
-            client.connect_async(self.config["host"], int(self.config["port"]), 30)
-            client.loop_start()
+            client.connect_async(config["host"], int(config["port"]), 30)
+            if client.loop_start() != mqtt.MQTT_ERR_SUCCESS:
+                raise RuntimeError("MQTT network loop failed to start")
         except Exception as error:
             with self.lock:
-                if gen == getattr(self, "_generation", gen):
-                    self.error = str(error)
+                # Keep an old client available for another teardown attempt
+                # if its stop failed; it is never considered connected.
+                self.client = old if client is None else None
+                self.connected = False
+                self.error = str(error)
+            if client is not None:
+                try:
+                    self._stop_client(client)
+                except Exception as cleanup_error:
+                    with self.lock:
+                        self.client = client
+                        self.error += f"; cleanup failed: {cleanup_error}"
 
     def _on_connect(self, client, _userdata, _flags, reason_code, _properties):
-        if self._rc_value(reason_code) != 0:
-            with self.lock:
-                self.error = f"connection refused: {reason_code}"
-            return
         with self.lock:
+            if client is not self.client:
+                return
+            if self._rc_value(reason_code) != 0:
+                self.error = f"connection refused: {reason_code}"
+                self.connected = False
+                return
             self.connected = True
             self.error = ""
             self.last_connected = datetime.now().astimezone().isoformat()
@@ -165,24 +164,25 @@ class HAMQTTBridge:
                 temporary.replace(self.status_path)
             except OSError:
                 pass
-        client.subscribe(f"{prefix}/+/set/+", qos=1)
-        self.last_states.clear()
-        for device in self.store.list_devices():
-            if device.get("ha_link"):
-                self.publish_discovery(device)
-                self.publish_state(device, force=True)
+            client.subscribe(f"{prefix}/+/set/+", qos=1)
+            self.last_states.clear()
+            for device in self.store.list_devices():
+                if device.get("ha_link"):
+                    self.publish_discovery(device)
+                    self.publish_state(device, force=True)
 
     def _on_disconnect(self, _client, _userdata, _flags, reason_code, _properties):
         with self.lock:
-            # Only mark this generation's client as down; a newer restart may
-            # already own self.client.
-            if _client is not None and _client is not self.client:
+            if _client is not self.client:
                 return
             self.connected = False
             if self._rc_value(reason_code) != 0:
                 self.error = f"disconnected: {reason_code}"
 
     def _on_message(self, _client, _userdata, message):
+        with self.lock:
+            if _client is not self.client:
+                return
         try:
             parts = message.topic.split("/")
             mac7, target = parts[-3].upper(), parts[-1].lower()
