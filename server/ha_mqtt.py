@@ -64,37 +64,93 @@ class HAMQTTBridge:
         return self.public_config()
 
     def start(self):
+        with self.lock:
+            if getattr(self, "_started", False):
+                return
+            self._started = True
+            self._generation = getattr(self, "_generation", 0)
         threading.Thread(target=self._publisher, daemon=True, name="ha-mqtt-publisher").start()
         self.restart()
 
+    @staticmethod
+    def _rc_value(reason_code):
+        # paho-mqtt v2 passes a ReasonCode object, v1 passes an int.
+        # `ReasonCode(0) != 0` is True, so normalise before comparing.
+        try:
+            if hasattr(reason_code, "value"):
+                return int(reason_code.value)
+            return int(reason_code)
+        except (TypeError, ValueError):
+            return reason_code
+
     def restart(self):
+        # Single-flight: two overlapping restarts (double-click "Save &
+        # Connect", concurrent API calls) must never leave two live clients
+        # with the same hardcoded client_id. The generation guard ensures only
+        # the newest restart owns self.client.
         with self.lock:
+            self._generation = getattr(self, "_generation", 0) + 1
+            gen = self._generation
             old = self.client
             self.client = None
             self.connected = False
             self.error = ""
-        if old:
-            old.loop_stop()
-            old.disconnect()
-        if not self.config.get("host"):
+        if old is not None:
+            # BUGFIX: order was loop_stop() then disconnect(). loop_stop()
+            # kills the network loop, so the queued DISCONNECT never reaches
+            # the broker — the old session stays alive broker-side until the
+            # keepalive timeout, and the new CONNECT with the SAME client_id
+            # looks like a "redundant duplicate" and is rejected/takes over.
+            # Correct order: silence callbacks, disconnect, let the loop flush,
+            # then stop the loop.
+            try:
+                old.on_connect = None
+                old.on_disconnect = None
+                old.on_message = None
+            except Exception:
+                pass
+            try:
+                old.disconnect()
+            except Exception:
+                pass
+            try:
+                time.sleep(0.3)
+            except Exception:
+                pass
+            try:
+                old.loop_stop()
+            except Exception:
+                pass
+        with self.lock:
+            if gen != getattr(self, "_generation", gen):
+                return  # a newer restart superseded us; don't create a client
+            host = self.config.get("host")
+        if not host:
             return
         try:
             client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="mttl-local-bridge", clean_session=True)
+            try:
+                client.reconnect_delay_set(min_delay=1, max_delay=30)
+            except Exception:
+                pass
             if self.config.get("username"):
                 client.username_pw_set(self.config["username"], self.config.get("password", ""))
             client.on_connect = self._on_connect
             client.on_disconnect = self._on_disconnect
             client.on_message = self._on_message
             with self.lock:
+                if gen != getattr(self, "_generation", gen):
+                    return
                 self.client = client
             client.connect_async(self.config["host"], int(self.config["port"]), 30)
             client.loop_start()
         except Exception as error:
             with self.lock:
-                self.error = str(error)
+                if gen == getattr(self, "_generation", gen):
+                    self.error = str(error)
 
     def _on_connect(self, client, _userdata, _flags, reason_code, _properties):
-        if reason_code != 0:
+        if self._rc_value(reason_code) != 0:
             with self.lock:
                 self.error = f"connection refused: {reason_code}"
             return
@@ -118,8 +174,12 @@ class HAMQTTBridge:
 
     def _on_disconnect(self, _client, _userdata, _flags, reason_code, _properties):
         with self.lock:
+            # Only mark this generation's client as down; a newer restart may
+            # already own self.client.
+            if _client is not None and _client is not self.client:
+                return
             self.connected = False
-            if reason_code != 0:
+            if self._rc_value(reason_code) != 0:
                 self.error = f"disconnected: {reason_code}"
 
     def _on_message(self, _client, _userdata, message):
