@@ -2,6 +2,8 @@
 
 [Korean](README.md) | [English](README_EN.md)
 
+To use the device's own web dashboard and MQTT directly without a backend server, see the [MTTL-W01 standalone firmware repository](https://github.com/af950833/mttl_w01_standalone).
+
 A Docker-based local server for using the LG U+ `MTTL-W01` smart power strip on a private network without the manufacturer's cloud.
 
 ![MTTL-W01 local server web dashboard](docs/dashboard-20260911.png)

@@ -2,6 +2,8 @@
 
 [Korean](README.md) | [English](README_EN.md)
 
+백엔드 서버 없이 멀티탭의 웹 대시보드와 MQTT로 직접 사용하려면 [MTTL-W01 독립 펌웨어 저장소](https://github.com/af950833/mttl_w01_standalone)를 참고하십시오.
+
 LG U+ `MTTL-W01` 스마트 멀티탭을 제조사 클라우드 없이 내부망에서 사용하기 위한 Docker 기반 로컬 서버입니다.
 
 ![MTTL-W01 로컬 서버 웹 대시보드](docs/dashboard-20260911.png)
